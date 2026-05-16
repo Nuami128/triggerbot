@@ -1,12 +1,12 @@
 package com.example.triggerbot;
 
-import net.fabricmc.api.ModInitializer;
+import net.fabricmc.api.ClientModInitializer;
 
-public class TriggerBotMod implements ModInitializer {
+public class TriggerBotMod implements ClientModInitializer {
 
     public static boolean attackAssist = true;
 
     @Override
-    public void onInitialize() {
+    public void onInitializeClient() {
     }
 }
