@@ -3,8 +3,10 @@
   "id": "triggerbot",
   "version": "1.0.1",
   "name": "TriggerBot",
-  "description": "A Fabric triggerbot mod",
-  "authors": ["YourName"],
+  "description": "A blank Fabric client mod starter.",
+  "authors": [
+    "YourName"
+  ],
   "license": "MIT",
   "environment": "client",
   "entrypoints": {
@@ -12,7 +14,6 @@
       "com.example.triggerbot.TriggerBotMod"
     ]
   },
-  "mixins": ["triggerbot.mixins.json"],
   "depends": {
     "fabricloader": ">=0.16.9",
     "minecraft": "~1.21.11",
@@ -20,4 +21,3 @@
     "fabric-api": "*"
   }
 }
-
