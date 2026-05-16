@@ -15,9 +15,11 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.4.1'
 
-      - run: ./gradlew build
+      - run: gradle build
