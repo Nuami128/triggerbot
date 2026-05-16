@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.example.triggerbot.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "KeyBindingAccessor",
+    "MinecraftClientMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
