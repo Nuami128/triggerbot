@@ -14,10 +14,10 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.AxeItem;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.SwordItem;
+import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.util.Hand;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
@@ -26,6 +26,9 @@ public class AutoStunModule extends EmptyModule {
     private static final float MIN_ATTACK_COOLDOWN = 0.9f;
     private static final long BASE_SHIELD_DELAY_MS = 250L;
     private static final long MIN_CLICK_INTERVAL_MS = 500L;
+    private static final KeyBinding.Category TRIGGERBOT_CATEGORY = KeyBinding.Category.create(
+            Identifier.of("triggerbot", "triggerbot")
+    );
 
     private final Map<UUID, Long> shieldStartTimes = new HashMap<>();
 
@@ -44,7 +47,7 @@ public class AutoStunModule extends EmptyModule {
                 "key.triggerbot.auto_stun",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_UNKNOWN,
-                "category.triggerbot"
+                TRIGGERBOT_CATEGORY
         ));
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
     }
@@ -107,14 +110,14 @@ public class AutoStunModule extends EmptyModule {
             return;
         }
 
-        int selectedSlot = player.getInventory().selectedSlot;
+        int selectedSlot = player.getInventory().getSelectedSlot();
         ItemStack heldStack = player.getMainHandStack();
-        if (heldStack.getItem() instanceof AxeItem) {
+        if (isAxe(heldStack)) {
             clickWithAxe(client, player, target, now);
             return;
         }
 
-        if (!(heldStack.getItem() instanceof SwordItem)) {
+        if (!isSword(heldStack)) {
             return;
         }
 
@@ -197,7 +200,7 @@ public class AutoStunModule extends EmptyModule {
     }
 
     private boolean isInsideShieldArc(ClientPlayerEntity player, LivingEntity target) {
-        Vec3d targetToPlayer = player.getPos().subtract(target.getPos()).normalize();
+        Vec3d targetToPlayer = player.getEntityPos().subtract(target.getEntityPos()).normalize();
         Vec3d targetLook = target.getRotationVec(1.0f).normalize();
         return targetLook.dotProduct(targetToPlayer) >= 0.0;
     }
@@ -220,7 +223,7 @@ public class AutoStunModule extends EmptyModule {
     private int findAxeSlot(ClientPlayerEntity player) {
         for (int slot = 0; slot < 9; slot++) {
             ItemStack stack = player.getInventory().getStack(slot);
-            if (stack.getItem() instanceof AxeItem) {
+            if (isAxe(stack)) {
                 return slot;
             }
         }
@@ -228,9 +231,17 @@ public class AutoStunModule extends EmptyModule {
         return -1;
     }
 
+    private boolean isAxe(ItemStack stack) {
+        return stack.isIn(ItemTags.AXES);
+    }
+
+    private boolean isSword(ItemStack stack) {
+        return stack.isIn(ItemTags.SWORDS);
+    }
+
     private void swapToSlot(MinecraftClient client, ClientPlayerEntity player, int slot) {
         simulateKeyPress(client.options.hotbarKeys[slot]);
-        player.getInventory().selectedSlot = slot;
+        player.getInventory().setSelectedSlot(slot);
     }
 
     private void simulateKeyPress(KeyBinding keyBinding) {
