@@ -33,7 +33,6 @@ public class AutoStunModule extends EmptyModule {
     private static final int HOTBAR_SLOT_COUNT = 9;
     private static final int MIN_ACTION_DELAY_TICKS = 1;
     private static final int RANDOM_EXTRA_DELAY_TICKS = 1;
-    private static final double BACKSTAB_DOT_THRESHOLD = -0.25D;
     private static final KeyBinding.Category TRIGGERBOT_CATEGORY = KeyBinding.Category.create(
             Identifier.of("triggerbot", "triggerbot")
     );
@@ -100,16 +99,17 @@ public class AutoStunModule extends EmptyModule {
 
         int selectedSlot = player.getInventory().getSelectedSlot();
         ItemStack heldStack = player.getMainHandStack();
+        boolean shouldSwapWeapons = isFacingShield(player, target);
         int axeSlot = isAxe(heldStack) ? selectedSlot : findAxeSlot(player);
-        if (axeSlot == -1) {
+        if (shouldSwapWeapons && axeSlot == -1) {
             return;
         }
 
-        if (isBackstab(player, target) && !isAxe(heldStack)) {
+        if (!isAxe(heldStack) && !isSword(heldStack)) {
             return;
         }
 
-        startSequence(player, target, selectedSlot, axeSlot);
+        startSequence(player, target, selectedSlot, axeSlot == -1 ? selectedSlot : axeSlot, shouldSwapWeapons);
     }
 
     private void handleToggleKey(MinecraftClient client) {
@@ -221,6 +221,121 @@ public class AutoStunModule extends EmptyModule {
         player.swingHand(Hand.MAIN_HAND);
         lastAttackTick = tickCounter;
         return true;
+    }
+
+    private void startSequence(
+            ClientPlayerEntity player,
+            PlayerEntity target,
+            int originalSlot,
+            int axeSlot,
+            boolean shouldSwapWeapons
+    ) {
+        activeSequence = new StunSequence(target.getId(), originalSlot, axeSlot);
+        actionQueue.clear();
+        actionDelayTicks = MIN_ACTION_DELAY_TICKS;
+
+        if (isAxe(player.getMainHandStack())) {
+            actionQueue.add(StunAction.AXE_ATTACK);
+            actionQueue.add(StunAction.AXE_ATTACK);
+            return;
+        }
+
+        if (!isSword(player.getMainHandStack())) {
+            clearSequence(player);
+            return;
+        }
+
+        actionQueue.add(StunAction.SWORD_ATTACK);
+        if (!shouldSwapWeapons) {
+            return;
+        }
+
+        actionQueue.add(StunAction.SWAP_TO_AXE);
+        actionQueue.add(StunAction.AXE_ATTACK);
+        actionQueue.add(StunAction.AXE_ATTACK);
+        actionQueue.add(StunAction.SWAP_TO_ORIGINAL);
+    }
+
+    private void scheduleNextActionDelay() {
+        actionDelayTicks = MIN_ACTION_DELAY_TICKS + random.nextInt(RANDOM_EXTRA_DELAY_TICKS + 1);
+    }
+
+    private void clearSequence(ClientPlayerEntity player) {
+        if (player != null && activeSequence != null) {
+            swapToSlot(player, activeSequence.originalSlot());
+        }
+
+        clearFinishedSequence();
+    }
+
+    private void clearFinishedSequence() {
+        activeSequence = null;
+        actionQueue.clear();
+        actionDelayTicks = 0;
+    }
+
+    private PlayerEntity findTarget(MinecraftClient client, ClientPlayerEntity player) {
+        if (client.world == null) {
+            return null;
+        }
+
+        PlayerEntity crosshairTarget = getCrosshairTarget(client);
+        if (crosshairTarget != null && isValidTarget(player, crosshairTarget)) {
+            return crosshairTarget;
+        }
+
+        PlayerEntity bestTarget = null;
+        double bestDistance = MAX_ATTACK_RANGE * MAX_ATTACK_RANGE;
+        for (PlayerEntity target : client.world.getPlayers()) {
+            if (!isValidTarget(player, target)) {
+                continue;
+            }
+
+            double distance = player.squaredDistanceTo(target);
+            if (distance < bestDistance && isInFrontOfPlayer(player, target)) {
+                bestDistance = distance;
+                bestTarget = target;
+            }
+        }
+
+        return bestTarget;
+    }
+
+    private PlayerEntity getCrosshairTarget(MinecraftClient client) {
+        if (client.targetedEntity instanceof PlayerEntity target) {
+            return target;
+        }
+
+        return null;
+    }
+
+    private boolean isValidTarget(ClientPlayerEntity player, PlayerEntity target) {
+        return target != player
+                && target.isAlive()
+                && !target.isSpectator()
+                && player.squaredDistanceTo(target) <= MAX_ATTACK_RANGE * MAX_ATTACK_RANGE
+                && target.isBlocking()
+                && isHoldingShield(target);
+    }
+
+
+    private boolean isValidSequenceTarget(ClientPlayerEntity player, PlayerEntity target) {
+        return target != player
+                && target.isAlive()
+                && !target.isSpectator()
+                && player.squaredDistanceTo(target) <= MAX_ATTACK_RANGE * MAX_ATTACK_RANGE;
+    }
+
+    private boolean canBreakShield(MinecraftClient client, ClientPlayerEntity player, PlayerEntity target) {
+        if (!player.isSprinting() || !player.isOnGround()) {
+            return false;
+        }
+
+        if (player.isUsingItem() || player.getVelocity().getY() > 0.0D) {
+            return false;
+        }
+
+        return hasShieldedLongEnough(client, target);
     }
 
     private void startSequence(ClientPlayerEntity player, PlayerEntity target, int originalSlot, int axeSlot) {
@@ -347,10 +462,10 @@ public class AutoStunModule extends EmptyModule {
         return Math.max(entry.getLatency(), 0);
     }
 
-    private boolean isBackstab(ClientPlayerEntity player, LivingEntity target) {
+    private boolean isFacingShield(ClientPlayerEntity player, LivingEntity target) {
         Vec3d targetToPlayer = player.getEntityPos().subtract(target.getEntityPos()).normalize();
         Vec3d targetLook = target.getRotationVec(1.0f).normalize();
-        return targetLook.dotProduct(targetToPlayer) <= BACKSTAB_DOT_THRESHOLD;
+        return targetLook.dotProduct(targetToPlayer) >= 0.0D;
     }
 
     private boolean isInFrontOfPlayer(ClientPlayerEntity player, LivingEntity target) {
