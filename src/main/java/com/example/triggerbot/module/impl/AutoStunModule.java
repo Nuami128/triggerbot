@@ -99,17 +99,23 @@ public class AutoStunModule extends EmptyModule {
 
         int selectedSlot = player.getInventory().getSelectedSlot();
         ItemStack heldStack = player.getMainHandStack();
-        boolean shouldSwapWeapons = isFacingShield(player, target);
-        int axeSlot = isAxe(heldStack) ? selectedSlot : findAxeSlot(player);
-        if (shouldSwapWeapons && axeSlot == -1) {
+        boolean holdingAxe = isAxe(heldStack);
+        boolean holdingSword = isSword(heldStack);
+        boolean targetFacingPlayer = isFacingShield(player, target);
+        int axeSlot = holdingAxe ? selectedSlot : findAxeSlot(player);
+        if (!holdingAxe && !holdingSword) {
             return;
         }
 
-        if (!isAxe(heldStack) && !isSword(heldStack)) {
+        if (targetFacingPlayer && axeSlot == -1) {
             return;
         }
 
-        startSequence(player, target, selectedSlot, axeSlot == -1 ? selectedSlot : axeSlot, shouldSwapWeapons);
+        if (!targetFacingPlayer && !holdingAxe) {
+            return;
+        }
+
+        startSequence(player, target, selectedSlot, axeSlot, targetFacingPlayer);
     }
 
     private void handleToggleKey(MinecraftClient client) {
@@ -127,6 +133,8 @@ public class AutoStunModule extends EmptyModule {
             shieldStartTimes.clear();
             sendToggleMessage(client, enabled);
         }
+
+        clearFinishedSequence();
     }
 
     private void sendToggleMessage(MinecraftClient client, boolean enabled) {
@@ -228,7 +236,7 @@ public class AutoStunModule extends EmptyModule {
             PlayerEntity target,
             int originalSlot,
             int axeSlot,
-            boolean shouldSwapWeapons
+            boolean targetFacingPlayer
     ) {
         activeSequence = new StunSequence(target.getId(), originalSlot, axeSlot);
         actionQueue.clear();
@@ -245,15 +253,15 @@ public class AutoStunModule extends EmptyModule {
             return;
         }
 
-        actionQueue.add(StunAction.SWORD_ATTACK);
-        if (!shouldSwapWeapons) {
+        if (targetFacingPlayer) {
+            actionQueue.add(StunAction.SWAP_TO_AXE);
+            actionQueue.add(StunAction.AXE_ATTACK);
+            actionQueue.add(StunAction.AXE_ATTACK);
+            actionQueue.add(StunAction.SWAP_TO_ORIGINAL);
             return;
         }
 
-        actionQueue.add(StunAction.SWAP_TO_AXE);
-        actionQueue.add(StunAction.AXE_ATTACK);
-        actionQueue.add(StunAction.AXE_ATTACK);
-        actionQueue.add(StunAction.SWAP_TO_ORIGINAL);
+        actionQueue.add(StunAction.SWORD_ATTACK);
     }
 
     private void scheduleNextActionDelay() {
