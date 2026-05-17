@@ -1,39 +1,36 @@
 package com.example.triggerbot.module.impl;
 
-import com.example.triggerbot.module.Module;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 
-public class AutoStunModule extends Module {
+public class AutoStunModule {
 
     private final MinecraftClient client = MinecraftClient.getInstance();
     private boolean enabled = false;
 
-    @Override
-    public void onEnable() {
+    // Call this to enable the module
+    public void enable() {
         enabled = true;
         sendHotbarMessage("Auto Stun Enabled");
     }
 
-    @Override
-    public void onDisable() {
+    // Call this to disable the module
+    public void disable() {
         enabled = false;
         sendHotbarMessage("Auto Stun Disabled");
     }
 
-    @Override
-    public void onTick() {
+    // Call this every tick from your main tick handler
+    public void tick() {
         if (!enabled) return;
 
-        // Debug tick message - remove when adding full logic
+        // Debug tick message
         System.out.println("AutoStunModule tick executing");
 
         // Future logic: shield break, swaps, backstab, attack sequences
     }
 
-    /**
-     * Utility method to show a message above the hotbar
-     */
+    // Utility method to show a message above the hotbar
     private void sendHotbarMessage(String message) {
         if (client.player != null) {
             client.player.sendMessage(Text.of(message), true); // 'true' displays over hotbar
