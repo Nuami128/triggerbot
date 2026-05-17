@@ -26,6 +26,8 @@ public class AutoStunModule extends EmptyModule {
     private static final float MIN_ATTACK_COOLDOWN = 0.9f;
     private static final long BASE_SHIELD_DELAY_MS = 250L;
     private static final long MIN_CLICK_INTERVAL_MS = 500L;
+    private static final int HOTBAR_START_SLOT = 0;
+    private static final int HOTBAR_SLOT_COUNT = 9;
     private static final KeyBinding.Category TRIGGERBOT_CATEGORY = KeyBinding.Category.create(
             Identifier.of("triggerbot", "triggerbot")
     );
@@ -221,7 +223,7 @@ public class AutoStunModule extends EmptyModule {
     }
 
     private int findAxeSlot(ClientPlayerEntity player) {
-        for (int slot = 0; slot < 9; slot++) {
+        for (int slot = HOTBAR_START_SLOT; slot < HOTBAR_SLOT_COUNT; slot++) {
             ItemStack stack = player.getInventory().getStack(slot);
             if (isAxe(stack)) {
                 return slot;
@@ -240,8 +242,16 @@ public class AutoStunModule extends EmptyModule {
     }
 
     private void swapToSlot(MinecraftClient client, ClientPlayerEntity player, int slot) {
+        if (!isHotbarSlot(slot)) {
+            return;
+        }
+
         simulateKeyPress(client.options.hotbarKeys[slot]);
         player.getInventory().setSelectedSlot(slot);
+    }
+
+    private boolean isHotbarSlot(int slot) {
+        return slot >= HOTBAR_START_SLOT && slot < HOTBAR_SLOT_COUNT;
     }
 
     private void simulateKeyPress(KeyBinding keyBinding) {
