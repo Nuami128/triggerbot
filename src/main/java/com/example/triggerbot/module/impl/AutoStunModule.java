@@ -1,6 +1,6 @@
 package com.example.triggerbot.module.impl;
 
-import com.example.triggerbot.module.ClientModule; // replace with the correct path
+import com.example.triggerbot.module.ClientModule; // make sure this path is correct
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 
@@ -10,9 +10,14 @@ public class AutoStunModule implements ClientModule {
     private boolean enabled = false;
 
     // ----------------------------
-    // Module interface methods
+    // Implemented interface methods
     // ----------------------------
-    
+
+    @Override
+    public String getName() {
+        return "Auto Stun";
+    }
+
     @Override
     public void onEnable() {
         enabled = true;
@@ -29,7 +34,7 @@ public class AutoStunModule implements ClientModule {
     public void tick() {
         if (!enabled) return;
 
-        // Debug tick message - remove when adding full logic
+        // Debug tick message
         System.out.println("AutoStunModule tick executing");
 
         // Future logic:
