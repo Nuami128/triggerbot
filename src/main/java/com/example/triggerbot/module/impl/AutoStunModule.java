@@ -2,7 +2,11 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Queue;
+import java.util.Random;
+import java.util.UUID;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
@@ -22,17 +26,21 @@ import org.lwjgl.glfw.GLFW;
 
 public class AutoStunModule extends EmptyModule {
     private static final float MIN_ATTACK_COOLDOWN = 0.9f;
-    private static final double MAX_ATTACK_RANGE = 2.95D;
+    private static final float MAX_ATTACK_RANGE = 2.95f;
+    private static final long BASE_SHIELD_DELAY_MS = 50L;
     private static final int HOTBAR_START_SLOT = 0;
     private static final int HOTBAR_SLOT_COUNT = 9;
-    private static final int ACTION_DELAY_TICKS = 1;
-    private static final int DEBUG_TICK_INTERVAL = 20;
+    private static final int MIN_ACTION_DELAY_TICKS = 1;
+    private static final int RANDOM_EXTRA_DELAY_TICKS = 1;
+    private static final long DEBUG_TICK_INTERVAL = 20L;
     private static final boolean DEBUG_LOGGING = true;
     private static final KeyBinding.Category TRIGGERBOT_CATEGORY = KeyBinding.Category.create(
             Identifier.of("triggerbot", "triggerbot")
     );
 
+    private final Map<UUID, Long> shieldStartTimes = new HashMap<>();
     private final Queue<StunAction> actionQueue = new ArrayDeque<>();
+    private final Random random = new Random();
 
     private KeyBinding toggleKey;
     private StunSequence activeSequence;
@@ -77,24 +85,14 @@ public class AutoStunModule extends EmptyModule {
         }
 
         debugTick();
-        if (hasActiveSequence() && processActiveSequence(client, player)) {
+
+        if (processActiveSequence(client, player)) {
             return;
         }
 
-        tryStartSequence(client, player);
-    }
-
-    private void tryStartSequence(MinecraftClient client, ClientPlayerEntity player) {
         PlayerEntity target = findTarget(client, player);
-        if (target == null || !canStartShieldStun(player, target)) {
-            return;
-        }
-
-        startSequence(player, target);
-    }
-
-    private void handleToggleKey(MinecraftClient client) {
-        if (toggleKey == null) {
+        if (target == null) {
+            shieldStartTimes.clear();
             return;
         }
 
@@ -110,6 +108,52 @@ public class AutoStunModule extends EmptyModule {
         }
     }
 
+        boolean targetFacingPlayer = isFacingShield(player, target);
+        if (!canBreakShield(client, player, target)) {
+            return;
+        }
+
+        int selectedSlot = player.getInventory().getSelectedSlot();
+        ItemStack heldStack = player.getMainHandStack();
+        boolean holdingAxe = isAxe(heldStack);
+        boolean holdingSword = isSword(heldStack);
+        int axeSlot = holdingAxe ? selectedSlot : findAxeSlot(player);
+        if (!holdingAxe && !holdingSword) {
+            return;
+        }
+
+        if (targetFacingPlayer && axeSlot == -1) {
+            debug("Target is facing shield; no axe slot available");
+            return;
+        }
+
+        if (!targetFacingPlayer && !holdingAxe) {
+            debug("Behind target; not swapping from sword");
+            return;
+        }
+
+        startSequence(player, target, selectedSlot, axeSlot, targetFacingPlayer);
+    }
+
+    private void handleToggleKey(MinecraftClient client) {
+        if (toggleKey == null) {
+            return;
+        }
+        scheduleNextActionDelay();
+    }
+
+        while (toggleKey.wasPressed()) {
+            enabled = !enabled;
+            if (!enabled && client.player != null) {
+                clearSequence(client.player);
+            } else if (!enabled) {
+                clearSequence(null);
+            }
+            shieldStartTimes.clear();
+            sendToggleMessage(client, enabled);
+        }
+    }
+
     private void sendToggleMessage(MinecraftClient client, boolean enabled) {
         if (client.player == null) {
             return;
@@ -117,13 +161,14 @@ public class AutoStunModule extends EmptyModule {
 
         String message = enabled ? "Auto stun enabled" : "Auto stun disabled";
         client.player.sendMessage(Text.literal(message), false);
-    }
-
-    private boolean hasActiveSequence() {
-        return activeSequence != null;
+        debug(message);
     }
 
     private boolean processActiveSequence(MinecraftClient client, ClientPlayerEntity player) {
+        if (activeSequence == null) {
+            return false;
+        }
+
         PlayerEntity target = getSequenceTarget(client);
         if (target == null || !isValidSequenceTarget(player, target)) {
             clearSequence(player);
@@ -131,8 +176,8 @@ public class AutoStunModule extends EmptyModule {
         }
 
         if (actionDelayTicks > 0) {
-            actionDelayTicks--;
             debug("Waiting " + actionDelayTicks + " tick(s) before next action");
+            actionDelayTicks--;
             return true;
         }
 
@@ -171,11 +216,19 @@ public class AutoStunModule extends EmptyModule {
 
     private boolean executeAction(MinecraftClient client, ClientPlayerEntity player, PlayerEntity target, StunAction action) {
         return switch (action) {
+            case SWORD_ATTACK -> attackIfReady(client, player, target);
             case SWAP_TO_AXE -> {
                 swapToSlot(player, activeSequence.axeSlot());
                 yield true;
             }
-            case ATTACK -> attackIfReady(client, player, target);
+            case AXE_ATTACK -> {
+                if (!isAxe(player.getMainHandStack())) {
+                    swapToSlot(player, activeSequence.axeSlot());
+                    yield false;
+                }
+
+                yield attackIfReady(client, player, target);
+            }
             case SWAP_TO_ORIGINAL -> {
                 swapToSlot(player, activeSequence.originalSlot());
                 yield true;
@@ -185,11 +238,6 @@ public class AutoStunModule extends EmptyModule {
 
     private boolean attackIfReady(MinecraftClient client, ClientPlayerEntity player, PlayerEntity target) {
         if (lastAttackTick == tickCounter) {
-            return false;
-        }
-
-        if (!isWithinReach(player, target)) {
-            clearSequence(player);
             return false;
         }
 
@@ -203,64 +251,49 @@ public class AutoStunModule extends EmptyModule {
         return true;
     }
 
-    private void startSequence(ClientPlayerEntity player, PlayerEntity target) {
-        int originalSlot = player.getInventory().getSelectedSlot();
-        ItemStack heldStack = player.getMainHandStack();
-        boolean holdingAxe = isAxe(heldStack);
-        boolean holdingSword = isSword(heldStack);
-        boolean targetFacingPlayer = isFacingShield(player, target);
-        int axeSlot = holdingAxe ? originalSlot : findAxeSlot(player);
-
-        if (!holdingAxe && !holdingSword) {
-            return;
-        }
-
-        if (targetFacingPlayer && axeSlot == -1) {
-            debug("Target is facing shield; no axe slot available");
-            return;
-        }
-
-        if (!targetFacingPlayer && holdingSword) {
-            queueSequence(target.getId(), originalSlot, originalSlot, StunAction.ATTACK);
-            debug("Started no-swap sword backstab sequence");
-            return;
-        }
-
-        if (!targetFacingPlayer && holdingAxe) {
-            queueSequence(target.getId(), originalSlot, originalSlot, StunAction.ATTACK, StunAction.ATTACK);
-            debug("Started no-swap axe backstab sequence");
-            return;
-        }
-
-        if (holdingAxe) {
-            queueSequence(target.getId(), originalSlot, originalSlot, StunAction.ATTACK, StunAction.ATTACK);
-            debug("Started axe shield-break sequence");
-            return;
-        }
-
-        queueSequence(
-                target.getId(),
-                originalSlot,
-                axeSlot,
-                StunAction.SWAP_TO_AXE,
-                StunAction.ATTACK,
-                StunAction.ATTACK,
-                StunAction.SWAP_TO_ORIGINAL
-        );
-        debug("Started sword-to-axe shield-break sequence");
-    }
-
-    private void queueSequence(int targetId, int originalSlot, int axeSlot, StunAction... actions) {
-        activeSequence = new StunSequence(targetId, originalSlot, axeSlot);
+    private void startSequence(
+            ClientPlayerEntity player,
+            PlayerEntity target,
+            int originalSlot,
+            int axeSlot,
+            boolean targetFacingPlayer
+    ) {
+        activeSequence = new StunSequence(target.getId(), originalSlot, axeSlot);
         actionQueue.clear();
-        for (StunAction action : actions) {
-            actionQueue.add(action);
+        actionDelayTicks = MIN_ACTION_DELAY_TICKS;
+
+        if (isAxe(player.getMainHandStack())) {
+            actionQueue.add(StunAction.AXE_ATTACK);
+            actionQueue.add(StunAction.AXE_ATTACK);
+            debug("Started axe double-click stun sequence");
+            return;
         }
-        scheduleNextActionDelay();
+
+        if (!isSword(player.getMainHandStack())) {
+            clearSequence(player);
+            return;
+        }
+
+        if (targetFacingPlayer) {
+            actionQueue.add(StunAction.SWORD_ATTACK);
+            actionQueue.add(StunAction.SWAP_TO_AXE);
+            actionQueue.add(StunAction.AXE_ATTACK);
+            actionQueue.add(StunAction.AXE_ATTACK);
+            actionQueue.add(StunAction.SWAP_TO_ORIGINAL);
+            debug("Started sword-to-axe shield-facing stun sequence");
+            return;
+        }
+
+        actionQueue.add(StunAction.SWORD_ATTACK);
+        debug("Started no-swap backstab stun sequence");
     }
 
     private void scheduleNextActionDelay() {
-        actionDelayTicks = ACTION_DELAY_TICKS;
+        actionDelayTicks = randomActionDelayTicks();
+    }
+
+    private int randomActionDelayTicks() {
+        return MIN_ACTION_DELAY_TICKS + random.nextInt(RANDOM_EXTRA_DELAY_TICKS + 1);
     }
 
     private void clearSequence(ClientPlayerEntity player) {
@@ -290,12 +323,12 @@ public class AutoStunModule extends EmptyModule {
         PlayerEntity bestTarget = null;
         double bestDistance = MAX_ATTACK_RANGE * MAX_ATTACK_RANGE;
         for (PlayerEntity target : client.world.getPlayers()) {
-            if (!isValidTarget(player, target) || !isInFrontOfPlayer(player, target)) {
+            if (!isValidTarget(player, target)) {
                 continue;
             }
 
             double distance = player.squaredDistanceTo(target);
-            if (distance < bestDistance) {
+            if (distance < bestDistance && isInFrontOfPlayer(player, target)) {
                 bestDistance = distance;
                 bestTarget = target;
             }
@@ -316,9 +349,34 @@ public class AutoStunModule extends EmptyModule {
         return target != player
                 && target.isAlive()
                 && !target.isSpectator()
-                && isWithinReach(player, target)
+                && player.squaredDistanceTo(target) <= MAX_ATTACK_RANGE * MAX_ATTACK_RANGE
                 && target.isBlocking()
                 && isHoldingShield(target);
+    }
+
+    private boolean isValidSequenceTarget(ClientPlayerEntity player, PlayerEntity target) {
+        return target != player
+                && target.isAlive()
+                && !target.isSpectator()
+                && player.squaredDistanceTo(target) <= MAX_ATTACK_RANGE * MAX_ATTACK_RANGE;
+    }
+
+    private boolean canBreakShield(MinecraftClient client, ClientPlayerEntity player, PlayerEntity target) {
+        if (!player.isSprinting() || !player.isOnGround()) {
+            return false;
+        }
+
+        if (player.isUsingItem() || player.getVelocity().getY() > 0.0D) {
+            return false;
+        }
+
+        return hasShieldedLongEnough(client, target);
+    }
+
+    private boolean hasShieldedLongEnough(MinecraftClient client, LivingEntity target) {
+        long now = System.currentTimeMillis();
+        long shieldStartTime = shieldStartTimes.computeIfAbsent(target.getUuid(), ignored -> now);
+        return now - shieldStartTime >= BASE_SHIELD_DELAY_MS + getTargetPing(client, target);
     }
 
     private boolean isValidSequenceTarget(ClientPlayerEntity player, PlayerEntity target) {
@@ -350,10 +408,6 @@ public class AutoStunModule extends EmptyModule {
         Vec3d playerLook = player.getRotationVec(1.0f).normalize();
         Vec3d playerToTarget = target.getEntityPos().subtract(player.getEntityPos()).normalize();
         return playerLook.dotProduct(playerToTarget) > 0.92D;
-    }
-
-    private boolean isWithinReach(ClientPlayerEntity player, PlayerEntity target) {
-        return player.squaredDistanceTo(target) <= MAX_ATTACK_RANGE * MAX_ATTACK_RANGE;
     }
 
     private int findAxeSlot(ClientPlayerEntity player) {
@@ -410,8 +464,9 @@ public class AutoStunModule extends EmptyModule {
     }
 
     private enum StunAction {
+        SWORD_ATTACK,
         SWAP_TO_AXE,
-        ATTACK,
+        AXE_ATTACK,
         SWAP_TO_ORIGINAL
     }
 
