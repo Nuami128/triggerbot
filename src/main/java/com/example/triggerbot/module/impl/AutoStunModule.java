@@ -133,6 +133,8 @@ public class AutoStunModule extends EmptyModule {
             shieldStartTimes.clear();
             sendToggleMessage(client, enabled);
         }
+
+        clearFinishedSequence();
     }
 
     private void sendToggleMessage(MinecraftClient client, boolean enabled) {
