@@ -26,6 +26,8 @@ public class AutoStunModule extends EmptyModule {
     private static final float MIN_ATTACK_COOLDOWN = 0.9f;
     private static final long BASE_SHIELD_DELAY_MS = 250L;
     private static final long MIN_CLICK_INTERVAL_MS = 500L;
+    private static final int HOTBAR_START_SLOT = 0;
+    private static final int HOTBAR_SLOT_COUNT = 9;
     private static final KeyBinding.Category TRIGGERBOT_CATEGORY = KeyBinding.Category.create(
             Identifier.of("triggerbot", "triggerbot")
     );
@@ -126,10 +128,10 @@ public class AutoStunModule extends EmptyModule {
             return;
         }
 
-        swapToSlot(client, player, axeSlot);
+        swapToSlot(player, axeSlot);
         clickWithAxe(client, player, target, now);
         pendingStun = new PendingStun(target.getId(), selectedSlot, axeSlot);
-        swapToSlot(client, player, selectedSlot);
+        swapToSlot(player, selectedSlot);
     }
 
     private void handleToggleKey() {
@@ -156,7 +158,7 @@ public class AutoStunModule extends EmptyModule {
         }
 
         if (client.currentScreen != null || player.isSpectator() || player.getAbilities().creativeMode) {
-            swapToSlot(client, player, pendingStun.originalSlot);
+            swapToSlot(player, pendingStun.originalSlot);
             pendingStun = null;
             return true;
         }
@@ -168,14 +170,14 @@ public class AutoStunModule extends EmptyModule {
 
         Entity entity = client.world.getEntityById(pendingStun.targetId);
         if (!(entity instanceof LivingEntity target) || !isTargetUnderCrosshair(client, pendingStun.targetId)) {
-            swapToSlot(client, player, pendingStun.originalSlot);
+            swapToSlot(player, pendingStun.originalSlot);
             pendingStun = null;
             return true;
         }
 
-        swapToSlot(client, player, pendingStun.axeSlot);
+        swapToSlot(player, pendingStun.axeSlot);
         clickWithAxe(client, player, target, now);
-        swapToSlot(client, player, pendingStun.originalSlot);
+        swapToSlot(player, pendingStun.originalSlot);
         pendingStun = null;
         return true;
     }
@@ -214,14 +216,13 @@ public class AutoStunModule extends EmptyModule {
     }
 
     private void clickWithAxe(MinecraftClient client, ClientPlayerEntity player, LivingEntity target, long now) {
-        simulateClick(client.options.attackKey);
         client.interactionManager.attackEntity(player, target);
         player.swingHand(Hand.MAIN_HAND);
         lastClickTime = now;
     }
 
     private int findAxeSlot(ClientPlayerEntity player) {
-        for (int slot = 0; slot < 9; slot++) {
+        for (int slot = HOTBAR_START_SLOT; slot < HOTBAR_SLOT_COUNT; slot++) {
             ItemStack stack = player.getInventory().getStack(slot);
             if (isAxe(stack)) {
                 return slot;
@@ -239,22 +240,16 @@ public class AutoStunModule extends EmptyModule {
         return stack.isIn(ItemTags.SWORDS);
     }
 
-    private void swapToSlot(MinecraftClient client, ClientPlayerEntity player, int slot) {
-        simulateKeyPress(client.options.hotbarKeys[slot]);
+    private void swapToSlot(ClientPlayerEntity player, int slot) {
+        if (!isHotbarSlot(slot)) {
+            return;
+        }
+
         player.getInventory().setSelectedSlot(slot);
     }
 
-    private void simulateKeyPress(KeyBinding keyBinding) {
-        InputUtil.Key boundKey = keyBinding.getBoundKey();
-        KeyBinding.setKeyPressed(boundKey, true);
-        KeyBinding.onKeyPressed(boundKey);
-        KeyBinding.setKeyPressed(boundKey, false);
-    }
-
-    private void simulateClick(KeyBinding keyBinding) {
-        InputUtil.Key boundKey = keyBinding.getBoundKey();
-        KeyBinding.setKeyPressed(boundKey, true);
-        KeyBinding.setKeyPressed(boundKey, false);
+    private boolean isHotbarSlot(int slot) {
+        return slot >= HOTBAR_START_SLOT && slot < HOTBAR_SLOT_COUNT;
     }
 
     private record PendingStun(int targetId, int originalSlot, int axeSlot) {
