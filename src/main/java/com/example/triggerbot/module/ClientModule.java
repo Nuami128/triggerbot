@@ -1,8 +1,6 @@
-package com.example.triggerbot.module;
-
 public interface ClientModule {
     String getName();
-
-    default void onInitialize() {
-    }
+    void onEnable();
+    void onDisable();
+    void onTick(); // maybe tick() in your skeleton is the wrong name
 }
