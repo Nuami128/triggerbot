@@ -28,10 +28,7 @@ import org.lwjgl.glfw.GLFW;
 
 public class AutoStunModule extends EmptyModule {
     private static final float MIN_ATTACK_COOLDOWN = 0.9f;
-    private static final float MAX_ATTACK_RANGE = 4.25f;
-    private static final float TARGET_LOCK_ANGLE = 8.0f;
-    private static final float MIN_ROTATION_STEP_DEGREES = 7.0f;
-    private static final float RANDOM_ROTATION_STEP_DEGREES = 5.0f;
+    private static final float MAX_ATTACK_RANGE = 2.95f;
     private static final long BASE_SHIELD_DELAY_MS = 250L;
     private static final int HOTBAR_START_SLOT = 0;
     private static final int HOTBAR_SLOT_COUNT = 9;
@@ -153,8 +150,6 @@ public class AutoStunModule extends EmptyModule {
             return true;
         }
 
-        smoothRotateToward(player, target);
-
         if (actionDelayTicks > 0) {
             actionDelayTicks--;
             return true;
@@ -219,10 +214,6 @@ public class AutoStunModule extends EmptyModule {
             return false;
         }
 
-        if (!isRotationCloseEnough(player, target)) {
-            return false;
-        }
-
         if (player.getAttackCooldownProgress(0.5f) < MIN_ATTACK_COOLDOWN) {
             return false;
         }
@@ -279,6 +270,11 @@ public class AutoStunModule extends EmptyModule {
             return null;
         }
 
+        PlayerEntity crosshairTarget = getCrosshairTarget(client);
+        if (crosshairTarget != null && isValidTarget(player, crosshairTarget)) {
+            return crosshairTarget;
+        }
+
         PlayerEntity bestTarget = null;
         double bestDistance = MAX_ATTACK_RANGE * MAX_ATTACK_RANGE;
         for (PlayerEntity target : client.world.getPlayers()) {
@@ -287,13 +283,25 @@ public class AutoStunModule extends EmptyModule {
             }
 
             double distance = player.squaredDistanceTo(target);
-            if (distance < bestDistance) {
+            if (distance < bestDistance && isInFrontOfPlayer(player, target)) {
                 bestDistance = distance;
                 bestTarget = target;
             }
         }
 
         return bestTarget;
+    }
+
+    private PlayerEntity getCrosshairTarget(MinecraftClient client) {
+        if (!(client.crosshairTarget instanceof EntityHitResult entityHitResult)) {
+            return null;
+        }
+
+        if (entityHitResult.getEntity() instanceof PlayerEntity target) {
+            return target;
+        }
+
+        return null;
     }
 
     private boolean isValidTarget(ClientPlayerEntity player, PlayerEntity target) {
@@ -350,29 +358,10 @@ public class AutoStunModule extends EmptyModule {
         return targetLook.dotProduct(targetToPlayer) <= BACKSTAB_DOT_THRESHOLD;
     }
 
-    private void smoothRotateToward(ClientPlayerEntity player, LivingEntity target) {
-        Vec3d eyeDelta = target.getEyePos().subtract(player.getEyePos());
-        double horizontalDistance = Math.sqrt(eyeDelta.x * eyeDelta.x + eyeDelta.z * eyeDelta.z);
-        float targetYaw = (float) (Math.toDegrees(Math.atan2(eyeDelta.z, eyeDelta.x)) - 90.0D);
-        float targetPitch = (float) -Math.toDegrees(Math.atan2(eyeDelta.y, horizontalDistance));
-        float maxStep = MIN_ROTATION_STEP_DEGREES + random.nextFloat() * RANDOM_ROTATION_STEP_DEGREES;
-
-        player.setYaw(approachAngle(player.getYaw(), targetYaw, maxStep));
-        player.setPitch(approachAngle(player.getPitch(), targetPitch, maxStep));
-    }
-
-    private boolean isRotationCloseEnough(ClientPlayerEntity player, LivingEntity target) {
-        Vec3d eyeDelta = target.getEyePos().subtract(player.getEyePos());
-        double horizontalDistance = Math.sqrt(eyeDelta.x * eyeDelta.x + eyeDelta.z * eyeDelta.z);
-        float targetYaw = (float) (Math.toDegrees(Math.atan2(eyeDelta.z, eyeDelta.x)) - 90.0D);
-        float targetPitch = (float) -Math.toDegrees(Math.atan2(eyeDelta.y, horizontalDistance));
-        return Math.abs(MathHelper.wrapDegrees(targetYaw - player.getYaw())) <= TARGET_LOCK_ANGLE
-                && Math.abs(MathHelper.wrapDegrees(targetPitch - player.getPitch())) <= TARGET_LOCK_ANGLE;
-    }
-
-    private float approachAngle(float current, float target, float maxStep) {
-        float delta = MathHelper.wrapDegrees(target - current);
-        return current + MathHelper.clamp(delta, -maxStep, maxStep);
+    private boolean isInFrontOfPlayer(ClientPlayerEntity player, LivingEntity target) {
+        Vec3d playerLook = player.getRotationVec(1.0f).normalize();
+        Vec3d playerToTarget = target.getEntityPos().subtract(player.getEntityPos()).normalize();
+        return playerLook.dotProduct(playerToTarget) > 0.92D;
     }
 
     private int findAxeSlot(ClientPlayerEntity player) {
