@@ -27,12 +27,14 @@ import org.lwjgl.glfw.GLFW;
 
 public class AutoStunModule extends EmptyModule {
     private static final float MIN_ATTACK_COOLDOWN = 0.9f;
-    private static final float MAX_ATTACK_RANGE = 3.0f;
-    private static final long BASE_SHIELD_DELAY_MS = 250L;
+    private static final float MAX_ATTACK_RANGE = 2.95f;
+    private static final long BASE_SHIELD_DELAY_MS = 50L;
     private static final int HOTBAR_START_SLOT = 0;
     private static final int HOTBAR_SLOT_COUNT = 9;
     private static final int MIN_ACTION_DELAY_TICKS = 1;
     private static final int RANDOM_EXTRA_DELAY_TICKS = 1;
+    private static final long DEBUG_TICK_INTERVAL = 20L;
+    private static final boolean DEBUG_LOGGING = true;
     private static final KeyBinding.Category TRIGGERBOT_CATEGORY = KeyBinding.Category.create(
             Identifier.of("triggerbot", "triggerbot")
     );
@@ -47,6 +49,7 @@ public class AutoStunModule extends EmptyModule {
     private int actionDelayTicks;
     private long tickCounter;
     private long lastAttackTick = -1L;
+    private long lastDebugTick = -1L;
 
     public AutoStunModule() {
         super("Auto Stun");
@@ -61,6 +64,7 @@ public class AutoStunModule extends EmptyModule {
                 TRIGGERBOT_CATEGORY
         ));
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
+        debug("Auto stun tick hook registered");
     }
 
     private void onClientTick(MinecraftClient client) {
@@ -81,6 +85,8 @@ public class AutoStunModule extends EmptyModule {
             return;
         }
 
+        debugTick();
+
         if (processActiveSequence(client, player)) {
             return;
         }
@@ -93,6 +99,7 @@ public class AutoStunModule extends EmptyModule {
 
         shieldStartTimes.keySet().removeIf(uuid -> !uuid.equals(target.getUuid()));
 
+        boolean targetFacingPlayer = isFacingShield(player, target);
         if (!canBreakShield(client, player, target)) {
             return;
         }
@@ -101,17 +108,18 @@ public class AutoStunModule extends EmptyModule {
         ItemStack heldStack = player.getMainHandStack();
         boolean holdingAxe = isAxe(heldStack);
         boolean holdingSword = isSword(heldStack);
-        boolean targetFacingPlayer = isFacingShield(player, target);
         int axeSlot = holdingAxe ? selectedSlot : findAxeSlot(player);
         if (!holdingAxe && !holdingSword) {
             return;
         }
 
         if (targetFacingPlayer && axeSlot == -1) {
+            debug("Target is facing shield; no axe slot available");
             return;
         }
 
         if (!targetFacingPlayer && !holdingAxe) {
+            debug("Behind target; not swapping from sword");
             return;
         }
 
@@ -133,8 +141,6 @@ public class AutoStunModule extends EmptyModule {
             shieldStartTimes.clear();
             sendToggleMessage(client, enabled);
         }
-
-        clearFinishedSequence();
     }
 
     private void sendToggleMessage(MinecraftClient client, boolean enabled) {
@@ -144,6 +150,7 @@ public class AutoStunModule extends EmptyModule {
 
         String message = enabled ? "Auto stun enabled" : "Auto stun disabled";
         client.player.sendMessage(Text.literal(message), false);
+        debug(message);
     }
 
     private boolean processActiveSequence(MinecraftClient client, ClientPlayerEntity player) {
@@ -158,6 +165,7 @@ public class AutoStunModule extends EmptyModule {
         }
 
         if (actionDelayTicks > 0) {
+            debug("Waiting " + actionDelayTicks + " tick(s) before next action");
             actionDelayTicks--;
             return true;
         }
@@ -172,6 +180,7 @@ public class AutoStunModule extends EmptyModule {
             return true;
         }
 
+        debug("Action performed: " + action);
         actionQueue.poll();
         if (actionQueue.isEmpty()) {
             clearFinishedSequence();
@@ -245,6 +254,7 @@ public class AutoStunModule extends EmptyModule {
         if (isAxe(player.getMainHandStack())) {
             actionQueue.add(StunAction.AXE_ATTACK);
             actionQueue.add(StunAction.AXE_ATTACK);
+            debug("Started axe double-click stun sequence");
             return;
         }
 
@@ -254,14 +264,17 @@ public class AutoStunModule extends EmptyModule {
         }
 
         if (targetFacingPlayer) {
+            actionQueue.add(StunAction.SWORD_ATTACK);
             actionQueue.add(StunAction.SWAP_TO_AXE);
             actionQueue.add(StunAction.AXE_ATTACK);
             actionQueue.add(StunAction.AXE_ATTACK);
             actionQueue.add(StunAction.SWAP_TO_ORIGINAL);
+            debug("Started sword-to-axe shield-facing stun sequence");
             return;
         }
 
         actionQueue.add(StunAction.SWORD_ATTACK);
+        debug("Started no-swap backstab stun sequence");
     }
 
     private void scheduleNextActionDelay() {
@@ -405,10 +418,28 @@ public class AutoStunModule extends EmptyModule {
 
     private void swapToSlot(ClientPlayerEntity player, int slot) {
         if (!isHotbarSlot(slot)) {
+            debug("Ignored invalid hotbar slot " + slot);
             return;
         }
 
         player.getInventory().setSelectedSlot(slot);
+    }
+
+    private void debugTick() {
+        if (tickCounter - lastDebugTick < DEBUG_TICK_INTERVAL) {
+            return;
+        }
+
+        lastDebugTick = tickCounter;
+        debug("Tick executed: queue=" + actionQueue.size() + ", delay=" + actionDelayTicks);
+    }
+
+    private void debug(String message) {
+        if (!DEBUG_LOGGING) {
+            return;
+        }
+
+        System.out.println("[TriggerBot/AutoStun] " + message);
     }
 
     private boolean isHotbarSlot(int slot) {
