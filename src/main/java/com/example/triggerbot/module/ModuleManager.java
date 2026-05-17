@@ -19,7 +19,7 @@ public class ModuleManager {
     );
 
     public void initialize() {
-        modules.forEach(ClientModule::onInitialize);
+        modules.forEach(ClientModule::onEnable);
     }
 
     public List<ClientModule> getModules() {
