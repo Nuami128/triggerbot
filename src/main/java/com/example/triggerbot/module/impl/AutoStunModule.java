@@ -22,13 +22,12 @@ import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
 public class AutoStunModule extends EmptyModule {
     private static final float MIN_ATTACK_COOLDOWN = 0.9f;
-    private static final float MAX_ATTACK_RANGE = 2.95f;
+    private static final float MAX_ATTACK_RANGE = 3.0f;
     private static final long BASE_SHIELD_DELAY_MS = 250L;
     private static final int HOTBAR_START_SLOT = 0;
     private static final int HOTBAR_SLOT_COUNT = 9;
@@ -293,11 +292,8 @@ public class AutoStunModule extends EmptyModule {
     }
 
     private PlayerEntity getCrosshairTarget(MinecraftClient client) {
-        if (!(client.crosshairTarget instanceof EntityHitResult entityHitResult)) {
-            return null;
-        }
-
-        if (entityHitResult.getEntity() instanceof PlayerEntity target) {
+        Entity targetedEntity = client.targetedEntity;
+        if (targetedEntity instanceof PlayerEntity target) {
             return target;
         }
 
