@@ -1,6 +1,6 @@
 package com.example.triggerbot.module.impl;
 
-import com.example.triggerbot.module.ClientModule; // make sure this path is correct
+import com.example.triggerbot.module.ClientModule;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 
