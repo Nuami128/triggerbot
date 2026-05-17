@@ -292,8 +292,7 @@ public class AutoStunModule extends EmptyModule {
     }
 
     private PlayerEntity getCrosshairTarget(MinecraftClient client) {
-        Entity targetedEntity = client.targetedEntity;
-        if (targetedEntity instanceof PlayerEntity target) {
+        if (client.targetedEntity instanceof PlayerEntity target) {
             return target;
         }
 
