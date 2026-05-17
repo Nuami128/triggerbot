@@ -338,6 +338,111 @@ public class AutoStunModule extends EmptyModule {
         return hasShieldedLongEnough(client, target);
     }
 
+    private void startSequence(ClientPlayerEntity player, PlayerEntity target, int originalSlot, int axeSlot) {
+        activeSequence = new StunSequence(target.getId(), originalSlot, axeSlot);
+        actionQueue.clear();
+        actionDelayTicks = MIN_ACTION_DELAY_TICKS;
+
+        if (isAxe(player.getMainHandStack())) {
+            actionQueue.add(StunAction.AXE_ATTACK);
+            actionQueue.add(StunAction.AXE_ATTACK);
+            return;
+        }
+
+        if (!isSword(player.getMainHandStack())) {
+            clearSequence(player);
+            return;
+        }
+
+        actionQueue.add(StunAction.SWORD_ATTACK);
+        actionQueue.add(StunAction.SWAP_TO_AXE);
+        actionQueue.add(StunAction.AXE_ATTACK);
+        actionQueue.add(StunAction.AXE_ATTACK);
+        actionQueue.add(StunAction.SWAP_TO_ORIGINAL);
+    }
+
+    private void scheduleNextActionDelay() {
+        actionDelayTicks = MIN_ACTION_DELAY_TICKS + random.nextInt(RANDOM_EXTRA_DELAY_TICKS + 1);
+    }
+
+    private void clearSequence(ClientPlayerEntity player) {
+        if (player != null && activeSequence != null) {
+            swapToSlot(player, activeSequence.originalSlot());
+        }
+
+        clearFinishedSequence();
+    }
+
+    private void clearFinishedSequence() {
+        activeSequence = null;
+        actionQueue.clear();
+        actionDelayTicks = 0;
+    }
+
+    private PlayerEntity findTarget(MinecraftClient client, ClientPlayerEntity player) {
+        if (client.world == null) {
+            return null;
+        }
+
+        PlayerEntity crosshairTarget = getCrosshairTarget(client);
+        if (crosshairTarget != null && isValidTarget(player, crosshairTarget)) {
+            return crosshairTarget;
+        }
+
+        PlayerEntity bestTarget = null;
+        double bestDistance = MAX_ATTACK_RANGE * MAX_ATTACK_RANGE;
+        for (PlayerEntity target : client.world.getPlayers()) {
+            if (!isValidTarget(player, target)) {
+                continue;
+            }
+
+            double distance = player.squaredDistanceTo(target);
+            if (distance < bestDistance && isInFrontOfPlayer(player, target)) {
+                bestDistance = distance;
+                bestTarget = target;
+            }
+        }
+
+        return bestTarget;
+    }
+
+    private PlayerEntity getCrosshairTarget(MinecraftClient client) {
+        if (client.targetedEntity instanceof PlayerEntity target) {
+            return target;
+        }
+
+        return null;
+    }
+
+    private boolean isValidTarget(ClientPlayerEntity player, PlayerEntity target) {
+        return target != player
+                && target.isAlive()
+                && !target.isSpectator()
+                && player.squaredDistanceTo(target) <= MAX_ATTACK_RANGE * MAX_ATTACK_RANGE
+                && target.isBlocking()
+                && isHoldingShield(target);
+    }
+
+
+    private boolean isValidSequenceTarget(ClientPlayerEntity player, PlayerEntity target) {
+        return target != player
+                && target.isAlive()
+                && !target.isSpectator()
+                && player.squaredDistanceTo(target) <= MAX_ATTACK_RANGE * MAX_ATTACK_RANGE;
+    }
+
+    private boolean canBreakShield(MinecraftClient client, ClientPlayerEntity player, PlayerEntity target) {
+        if (!player.isSprinting() || !player.isOnGround()) {
+            return false;
+        }
+
+        if (player.isUsingItem() || player.getVelocity().getY() > 0.0D) {
+            return false;
+        }
+
+        return hasShieldedLongEnough(client, target);
+    }
+
     private boolean hasShieldedLongEnough(MinecraftClient client, LivingEntity target) {
         long now = System.currentTimeMillis();
         long shieldStartTime = shieldStartTimes.computeIfAbsent(target.getUuid(), ignored -> now);
