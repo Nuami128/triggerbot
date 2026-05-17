@@ -11,7 +11,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.LivingEntity;
@@ -97,7 +96,17 @@ public class AutoStunModule extends EmptyModule {
             return;
         }
 
-        shieldStartTimes.keySet().removeIf(uuid -> !uuid.equals(target.getUuid()));
+        while (toggleKey.wasPressed()) {
+            enabled = !enabled;
+            if (enabled) {
+                debug("Auto stun enabled");
+            } else {
+                clearSequence(client.player);
+                debug("Auto stun disabled");
+            }
+            sendToggleMessage(client, enabled);
+        }
+    }
 
         boolean targetFacingPlayer = isFacingShield(player, target);
         if (!canBreakShield(client, player, target)) {
@@ -130,6 +139,8 @@ public class AutoStunModule extends EmptyModule {
         if (toggleKey == null) {
             return;
         }
+        scheduleNextActionDelay();
+    }
 
         while (toggleKey.wasPressed()) {
             enabled = !enabled;
@@ -368,17 +379,23 @@ public class AutoStunModule extends EmptyModule {
         return now - shieldStartTime >= BASE_SHIELD_DELAY_MS + getTargetPing(client, target);
     }
 
-    private int getTargetPing(MinecraftClient client, LivingEntity target) {
-        if (!(target instanceof PlayerEntity player) || client.getNetworkHandler() == null) {
-            return 0;
-        }
+    private boolean isValidSequenceTarget(ClientPlayerEntity player, PlayerEntity target) {
+        return target != player
+                && target.isAlive()
+                && !target.isSpectator()
+                && isWithinReach(player, target);
+    }
 
-        PlayerListEntry entry = client.getNetworkHandler().getPlayerListEntry(player.getUuid());
-        if (entry == null) {
-            return 0;
-        }
+    private boolean canStartShieldStun(ClientPlayerEntity player, PlayerEntity target) {
+        return isHoldingShield(target)
+                && player.isSprinting()
+                && player.isOnGround()
+                && !isAscending(player)
+                && !player.isUsingItem();
+    }
 
-        return Math.max(entry.getLatency(), 0);
+    private boolean isAscending(ClientPlayerEntity player) {
+        return player.getVelocity().getY() > 0.0D;
     }
 
     private boolean isFacingShield(ClientPlayerEntity player, LivingEntity target) {
