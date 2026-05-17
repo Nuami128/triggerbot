@@ -9,10 +9,6 @@ public class AutoStunModule implements ClientModule {
     private final MinecraftClient client = MinecraftClient.getInstance();
     private boolean enabled = false;
 
-    // ----------------------------
-    // Implemented interface methods
-    // ----------------------------
-
     @Override
     public String getName() {
         return "Auto Stun";
@@ -31,26 +27,16 @@ public class AutoStunModule implements ClientModule {
     }
 
     @Override
-    public void tick() {
+    public void onTick() {
         if (!enabled) return;
 
-        // Debug tick message
-        System.out.println("AutoStunModule tick executing");
-
-        // Future logic:
-        // - Shield break
-        // - Axe/Sword swap sequences
-        // - Backstab/front logic
-        // - Tick-queued attacks
+        // TODO: add shield-break / axe-sword logic here
+        System.out.println("AutoStunModule onTick running"); // debug
     }
 
-    // ----------------------------
-    // Utility methods
-    // ----------------------------
-    
     private void sendHotbarMessage(String message) {
         if (client.player != null) {
-            client.player.sendMessage(Text.of(message), true); // 'true' displays over hotbar
+            client.player.sendMessage(Text.of(message), true); // shows over hotbar
         }
     }
 }
