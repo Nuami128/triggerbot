@@ -11,4 +11,19 @@ public abstract class EmptyModule implements ClientModule {
     public String getName() {
         return name;
     }
+
+    @Override
+    public void onEnable() {
+        // default empty
+    }
+
+    @Override
+    public void onDisable() {
+        // default empty
+    }
+
+    @Override
+    public void onTick() {
+        // default empty
+    }
 }
