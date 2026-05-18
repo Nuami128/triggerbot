@@ -2,6 +2,7 @@
 package com.example.modules.combat;
 
 import com.example.modules.api.ClientModule;
+import com.example.modules.api.EmptyModule;
 import com.example.modules.api.ModuleManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
