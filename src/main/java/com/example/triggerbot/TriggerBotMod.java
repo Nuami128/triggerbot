@@ -36,12 +36,13 @@ public class TriggerBotMod implements ClientModInitializer {
         // Main tick loop
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
-    while (AUTOSTUN_KEY.wasPressed()) {
-        System.out.println("R WORKS");
-    }
+            while (AUTOSTUN_KEY.wasPressed()) {
+                System.out.println("R WORKS");
+            }
 
-    MODULE_MANAGER.tickAll();
-});
+            MODULE_MANAGER.tickAll();
+        });
+    } // ✅ THIS WAS MISSING
 
     public static ModuleManager getModuleManager() {
         return MODULE_MANAGER;
