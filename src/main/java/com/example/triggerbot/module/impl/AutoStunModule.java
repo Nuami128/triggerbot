@@ -39,7 +39,7 @@ public class AutoStunModule implements ClientModule {
             "key.triggerbot.autostun",
             InputUtil.Type.KEYSYM,
             GLFW.GLFW_KEY_R,
-            KeyBinding.Category.MISC
+            "category.triggerbot"
     );
 
     // ── State ─────────────────────────────────────────────────────────────────
