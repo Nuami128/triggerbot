@@ -39,7 +39,7 @@ public class AutoStunModule implements ClientModule {
             "key.triggerbot.autostun",
             InputUtil.Type.KEYSYM,
             GLFW.GLFW_KEY_R,
-            "category.triggerbot.modules"
+            KeyBinding.Category.MISC
     );
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -78,6 +78,10 @@ public class AutoStunModule implements ClientModule {
         sendHotbarMessage("Auto Stun Disabled");
     }
 
+    public boolean isEnabled() {
+    return enabled;
+    }
+    
     @Override
     public void onTick() {
         // ── Drain one queued action, respecting the inter-action delay ─────────
