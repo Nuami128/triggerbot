@@ -1,5 +1,4 @@
 {
-  "category.triggerbot": "TriggerBot",
-  "key.categories.triggerbot.triggerbot": "TriggerBot",
-  "key.triggerbot.auto_stun": "Toggle Auto Stun"
+  "key.triggerbot.autostun": "Auto Stun",
+  "category.triggerbot": "TriggerBot"
 }
