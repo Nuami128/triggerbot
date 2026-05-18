@@ -1,5 +1,5 @@
 // Minecraft 1.21.11 (Fabric)
-package com.example.modules.api;
+package com.example.triggerbot.module;
 
 /**
  * Minimal contract every module must satisfy.
