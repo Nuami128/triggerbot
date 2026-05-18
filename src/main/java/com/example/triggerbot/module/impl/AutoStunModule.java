@@ -1,5 +1,5 @@
 // Minecraft 1.21.11 (Fabric)
-package com.example.modules.combat;
+package com.example.triggerbot.module.impl;
 
 import com.example.modules.api.ClientModule;
 import com.example.modules.api.EmptyModule;
