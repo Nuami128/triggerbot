@@ -15,48 +15,43 @@ public class TriggerBotMod implements ClientModInitializer {
 
     private static final ModuleManager MODULE_MANAGER = ModuleManager.getInstance();
 
-    // ✅ Proper keybind stored in main client class
     private static KeyBinding AUTOSTUN_KEY;
 
     @Override
     public void onInitializeClient() {
 
-        // Register modules
+        // Register module
         MODULE_MANAGER.register(new AutoStunModule());
 
-        // ✅ Register keybind correctly (shows in Controls menu)
+        // Register keybind (SAFE + visible in Controls)
         AUTOSTUN_KEY = KeyBindingHelper.registerKeyBinding(
                 new KeyBinding(
                         "key.triggerbot.autostun",
                         InputUtil.Type.KEYSYM,
                         GLFW.GLFW_KEY_R,
-                        "category.triggerbot"
+                        KeyBinding.Category.MISC
                 )
         );
 
-        // Main tick loop
+        // Tick loop
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
-            // Handle key press
             while (AUTOSTUN_KEY.wasPressed()) {
 
                 AutoStunModule mod =
-                        (AutoStunModule) MODULE_MANAGER
-                                .find("AutoStun")
-                                .orElse(null);
+                        (AutoStunModule) MODULE_MANAGER.find("AutoStun").orElse(null);
 
-                if (mod == null) return;
+                if (mod == null) continue;
 
-                // Toggle + trigger behavior
+                // toggle + trigger
                 if (!mod.isEnabled()) {
                     mod.onEnable();
-                    return;
+                    continue;
                 }
 
                 mod.trigger();
             }
 
-            // Tick modules normally
             MODULE_MANAGER.tickAll();
         });
     }
