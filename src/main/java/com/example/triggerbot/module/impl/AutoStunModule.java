@@ -36,11 +36,11 @@ public class AutoStunModule implements ClientModule {
     // ── Keybind ───────────────────────────────────────────────────────────────
     // Register via KeyBindingHelper.registerKeyBinding(KEYBIND) in your mod init.
     public static final KeyBinding KEYBIND = new KeyBinding(
-            "key.triggerbot.autostun",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_R,
-            "category.triggerbot"
-    );
+        "key.triggerbot.autostun",
+        InputUtil.Type.KEYSYM,
+        GLFW.GLFW_KEY_R,
+        KeyBinding.Category.MISC
+);
 
     // ── State ─────────────────────────────────────────────────────────────────
     private boolean enabled       = false;
