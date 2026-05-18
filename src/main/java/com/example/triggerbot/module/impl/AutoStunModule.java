@@ -1,3 +1,4 @@
+// Minecraft 1.21.11 (Fabric)
 package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.ClientModule;
@@ -5,9 +6,9 @@ import com.example.triggerbot.module.ModuleManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.world.item.AxeItem;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.SwordItem;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.SwordItem;
 import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 import net.minecraft.util.Hand;
 
@@ -139,7 +140,7 @@ public class AutoStunModule implements ClientModule {
 
         if (closest == null) return null;
 
-        boolean shielding = closest.isBlocking();
+        boolean shielding    = closest.isBlocking();
         boolean facingPlayer = isFacingPlayer(closest, player);
 
         return new TargetInfo(closest, shielding, facingPlayer);
@@ -150,7 +151,7 @@ public class AutoStunModule implements ClientModule {
         double dz = player.getZ() - target.getZ();
         double angleToPlayer = Math.toDegrees(Math.atan2(-dx, dz));
 
-        float targetYaw = ((target.getYaw() % 360) + 360) % 360;
+        float targetYaw  = ((target.getYaw() % 360) + 360) % 360;
         double normAngle = (angleToPlayer % 360 + 360) % 360;
 
         double diff = Math.abs(targetYaw - normAngle);
@@ -175,7 +176,7 @@ public class AutoStunModule implements ClientModule {
         mc.player.sendMessage(net.minecraft.text.Text.literal("[AutoStun] " + message), true);
     }
 
-    // ── Reflection helpers for selectedSlot ───────────────────────────────
+    // ── Reflection helpers for selectedSlot ───────────────────────────────────
     private int getSelectedSlot(PlayerInventory inv) {
         try {
             Field f = PlayerInventory.class.getDeclaredField("selectedSlot");
@@ -203,8 +204,8 @@ public class AutoStunModule implements ClientModule {
         final boolean isFacingPlayer;
 
         TargetInfo(net.minecraft.entity.LivingEntity entity, boolean isShielding, boolean isFacingPlayer) {
-            this.entity = entity;
-            this.isShielding = isShielding;
+            this.entity         = entity;
+            this.isShielding    = isShielding;
             this.isFacingPlayer = isFacingPlayer;
         }
     }
