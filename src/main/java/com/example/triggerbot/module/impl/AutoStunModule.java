@@ -160,6 +160,16 @@ public class AutoStunModule implements ClientModule {
         }
     }
 
+public void trigger() {
+    MinecraftClient mc = MinecraftClient.getInstance();
+    if (mc.player == null) return;
+
+    TargetInfo target = findNearestTarget(mc, mc.player);
+    if (target == null) return;
+
+    startSequence(mc, target.entity);
+}
+    
     private void reset() {
         running = false;
         step = Step.IDLE;
