@@ -23,7 +23,7 @@ public class TriggerBotMod implements ClientModInitializer {
         // Register module
         MODULE_MANAGER.register(new AutoStunModule());
 
-        // Register keybind (SAFE + visible in Controls)
+        // Register keybind (visible in Controls → Misc)
         AUTOSTUN_KEY = KeyBindingHelper.registerKeyBinding(
                 new KeyBinding(
                         "key.triggerbot.autostun",
@@ -33,7 +33,7 @@ public class TriggerBotMod implements ClientModInitializer {
                 )
         );
 
-        // Tick loop
+        // Main tick loop
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
             while (AUTOSTUN_KEY.wasPressed()) {
@@ -43,7 +43,6 @@ public class TriggerBotMod implements ClientModInitializer {
 
                 if (mod == null) continue;
 
-                // toggle + trigger
                 if (!mod.isEnabled()) {
                     mod.onEnable();
                     continue;
