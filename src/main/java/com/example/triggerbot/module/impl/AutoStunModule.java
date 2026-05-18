@@ -49,6 +49,11 @@ public class AutoStunModule implements ClientModule {
         return MODULE_NAME;
     }
 
+    // ✅ FIX: missing method required by your TriggerBotMod
+    public boolean isEnabled() {
+        return enabled;
+    }
+
     @Override
     public void onEnable() {
         enabled = true;
@@ -69,11 +74,12 @@ public class AutoStunModule implements ClientModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return;
 
+        // START
         if (!running) {
             if (!enabled) return;
 
             if (mc.options.attackKey.wasPressed()) {
-                TargetInfo target = findNearestShieldTarget(mc, mc.player);
+                TargetInfo target = findNearestTarget(mc, mc.player);
                 if (target == null) return;
 
                 startSequence(mc, target.entity);
@@ -81,13 +87,16 @@ public class AutoStunModule implements ClientModule {
             return;
         }
 
+        // RUN
         runStep(mc);
     }
 
     private void startSequence(MinecraftClient mc, Entity target) {
         ctx = new CombatContext();
         ctx.target = target;
-        ctx.originalSlot = mc.player.getInventory().selectedSlot;
+
+        // ✅ FIX: no direct selectedSlot access
+        ctx.originalSlot = mc.player.getInventory().getSelectedSlot();
 
         step = Step.SWITCH_TO_AXE;
         running = true;
@@ -141,7 +150,8 @@ public class AutoStunModule implements ClientModule {
     }
 
     private void swap(MinecraftClient mc, int slot) {
-        mc.player.getInventory().selectedSlot = slot;
+        // ✅ FIX: correct 1.21 method usage
+        mc.player.getInventory().setSelectedSlot(slot);
 
         if (mc.getNetworkHandler() != null) {
             mc.getNetworkHandler().sendPacket(
@@ -166,7 +176,7 @@ public class AutoStunModule implements ClientModule {
         return -1;
     }
 
-    private TargetInfo findNearestShieldTarget(MinecraftClient mc, ClientPlayerEntity player) {
+    private TargetInfo findNearestTarget(MinecraftClient mc, ClientPlayerEntity player) {
         if (mc.world == null) return null;
 
         Entity closest = null;
