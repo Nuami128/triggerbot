@@ -36,24 +36,12 @@ public class TriggerBotMod implements ClientModInitializer {
         // Main tick loop
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
-            while (AUTOSTUN_KEY.wasPressed()) {
-
-                AutoStunModule mod =
-                        (AutoStunModule) MODULE_MANAGER.find("AutoStun").orElse(null);
-
-                if (mod == null) continue;
-
-                if (!mod.isEnabled()) {
-                    mod.onEnable();
-                    continue;
-                }
-
-                mod.trigger();
-            }
-
-            MODULE_MANAGER.tickAll();
-        });
+    while (AUTOSTUN_KEY.wasPressed()) {
+        System.out.println("R WORKS");
     }
+
+    MODULE_MANAGER.tickAll();
+});
 
     public static ModuleManager getModuleManager() {
         return MODULE_MANAGER;
