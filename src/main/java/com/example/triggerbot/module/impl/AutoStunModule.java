@@ -1,9 +1,8 @@
-// Minecraft 1.21.11 (Fabric)
 package com.example.triggerbot.module.impl;
 
-import com.example.modules.api.ClientModule;
-import com.example.modules.api.EmptyModule;
-import com.example.modules.api.ModuleManager;
+import com.example.triggerbot.module.ClientModule;
+import com.example.triggerbot.module.EmptyModule;
+import com.example.triggerbot.module.ModuleManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
