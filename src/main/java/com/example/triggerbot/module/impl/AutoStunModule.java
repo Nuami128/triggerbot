@@ -17,13 +17,6 @@ public class AutoStunModule implements ClientModule {
 
     private static final String MODULE_NAME = "AutoStun";
 
-    public static final KeyBinding KEYBIND = new KeyBinding(
-            "key.triggerbot.autostun",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_R,
-            KeyBinding.Category.MISC
-    );
-
     private boolean enabled = false;
     private boolean running = false;
 
