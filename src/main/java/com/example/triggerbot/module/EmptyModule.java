@@ -1,4 +1,4 @@
-package com.example.modules.api;
+package com.example.triggerbot.module;
 
 public abstract class EmptyModule implements ClientModule {
     private final String name;
