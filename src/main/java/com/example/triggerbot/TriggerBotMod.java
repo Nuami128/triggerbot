@@ -27,19 +27,20 @@ public class TriggerBotMod implements ClientModInitializer {
             // Toggle AutoStun on key press
             if (AutoStunModule.KEYBIND.wasPressed()) {
 
-                AutoStunModule mod =
-                        (AutoStunModule) MODULE_MANAGER
-                                .find("AutoStun")
-                                .orElse(null);
+    AutoStunModule mod =
+            (AutoStunModule) MODULE_MANAGER
+                    .find("AutoStun")
+                    .orElse(null);
 
-                if (mod != null) {
+    if (mod == null) return;
 
-                    if (mod.isEnabled()) {
-                        mod.onDisable();
-                    } else {
-                        mod.onEnable();
-                    }
-                }
+    if (!mod.isEnabled()) {
+        mod.onEnable();
+        return;
+    }
+
+    // trigger combo directly
+    mod.trigger();
             }
 
             // Tick all modules
