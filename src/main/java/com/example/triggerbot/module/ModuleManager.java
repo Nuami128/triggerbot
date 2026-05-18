@@ -28,7 +28,7 @@ public final class ModuleManager {
         return INSTANCE;
     }
 
-    private ModuleManager() {}
+    public ModuleManager() {}
 
     // ── State ──────────────────────────────────────────────────────────────────
     private final List<ClientModule> modules = new ArrayList<>();
