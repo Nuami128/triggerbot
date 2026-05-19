@@ -31,6 +31,19 @@ public class AutoStunModule implements ClientModule {
 
     private boolean enabled = false;
 
+    // tick state machine
+    private enum Stage {
+        IDLE,
+        SWAP,
+        ATTACK,
+        RETURN
+    }
+
+    private Stage stage = Stage.IDLE;
+    private int tickDelay = 0;
+
+    private int savedSlot = -1;
+
     @Override
     public String getName() {
         return "AutoStun";
@@ -49,6 +62,8 @@ public class AutoStunModule implements ClientModule {
     @Override
     public void onDisable() {
         enabled = false;
+        stage = Stage.IDLE;
+        tickDelay = 0;
         send("Disabled");
     }
 
@@ -61,33 +76,67 @@ public class AutoStunModule implements ClientModule {
 
         if (mc.player == null || mc.world == null) return;
 
-        Entity target = findNearestTarget(mc, mc.player);
+        // don’t interrupt eating / shielding
+        if (mc.player.isUsingItem()) return;
 
-        if (target == null) {
-            send("No target");
+        // cooldown gate (prevents spam CPS)
+        if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f) return;
+
+        // STATE MACHINE
+        if (stage == Stage.IDLE) {
+
+            Entity target = findNearestTarget(mc, mc.player);
+
+            if (target == null) return;
+
+            stage = Stage.SWAP;
             return;
         }
 
-        int axeSlot = findHotbarSlot(
-                mc.player.getInventory(),
-                AxeItem.class
-        );
+        if (stage == Stage.SWAP) {
 
-        if (axeSlot == -1) {
-            send("No axe");
+            savedSlot = mc.player.getInventory().getSelectedSlot();
+
+            int axeSlot = findHotbarSlot(mc.player.getInventory(), AxeItem.class);
+
+            if (axeSlot == -1) {
+                send("No axe");
+                stage = Stage.IDLE;
+                return;
+            }
+
+            swap(mc, axeSlot);
+
+            stage = Stage.ATTACK;
+            tickDelay = 0;
             return;
         }
 
-        int oldSlot = mc.player.getInventory().getSelectedSlot();
+        if (stage == Stage.ATTACK) {
 
-        // Swap to axe
-        swap(mc, axeSlot);
+            if (tickDelay++ < 1) return;
 
-        // Attack
-        attack(mc, target);
+            Entity target = findNearestTarget(mc, mc.player);
 
-        // Swap back
-        swap(mc, oldSlot);
+            if (target != null) {
+                attack(mc, target);
+            }
+
+            stage = Stage.RETURN;
+            tickDelay = 0;
+            return;
+        }
+
+        if (stage == Stage.RETURN) {
+
+            if (tickDelay++ < 1) return;
+
+            if (savedSlot != -1) {
+                swap(mc, savedSlot);
+            }
+
+            stage = Stage.IDLE;
+        }
     }
 
     private void attack(MinecraftClient mc, Entity target) {
@@ -124,19 +173,17 @@ public class AutoStunModule implements ClientModule {
 
         for (Entity e : mc.world.getEntities()) {
 
-            // Skip yourself
+            if (!(e instanceof LivingEntity living)) continue;
+
             if (e == player) continue;
 
-            // Skip dead entities
-            if (!e.isAlive()) continue;
-
-            // Allow all living entities
-            if (!(e instanceof LivingEntity)) continue;
+            // ONLY shielders
+            if (!living.isBlocking()) continue;
 
             double dist = player.squaredDistanceTo(e);
 
-            // 4 block range
-            if (dist > 16.0) continue;
+            // 3 blocks
+            if (dist > 9.0) continue;
 
             if (dist < closestDist) {
 
