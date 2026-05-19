@@ -8,6 +8,7 @@ import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerInventory;
 
 import net.minecraft.item.AxeItem;
@@ -60,9 +61,6 @@ public class AutoStunModule implements ClientModule {
 
         if (mc.player == null || mc.world == null) return;
 
-        // DEBUG MESSAGE
-        send("Ticking");
-
         Entity target = findNearestTarget(mc, mc.player);
 
         if (target == null) {
@@ -82,10 +80,13 @@ public class AutoStunModule implements ClientModule {
 
         int oldSlot = mc.player.getInventory().getSelectedSlot();
 
+        // Swap to axe
         swap(mc, axeSlot);
 
+        // Attack
         attack(mc, target);
 
+        // Swap back
         swap(mc, oldSlot);
     }
 
@@ -123,12 +124,18 @@ public class AutoStunModule implements ClientModule {
 
         for (Entity e : mc.world.getEntities()) {
 
-            if (!(e instanceof ClientPlayerEntity)) continue;
-
+            // Skip yourself
             if (e == player) continue;
+
+            // Skip dead entities
+            if (!e.isAlive()) continue;
+
+            // Allow all living entities
+            if (!(e instanceof LivingEntity)) continue;
 
             double dist = player.squaredDistanceTo(e);
 
+            // 4 block range
             if (dist > 16.0) continue;
 
             if (dist < closestDist) {
