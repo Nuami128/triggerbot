@@ -21,9 +21,6 @@ import org.lwjgl.glfw.GLFW;
 
 public class AutoStunModule implements ClientModule {
 
-    private static final String MODULE_NAME = "AutoStun";
-
-    // ✅ Proper Fabric keybind
     public static final KeyBinding KEYBIND = new KeyBinding(
             "key.triggerbot.autostun",
             InputUtil.Type.KEYSYM,
@@ -35,7 +32,7 @@ public class AutoStunModule implements ClientModule {
 
     @Override
     public String getName() {
-        return MODULE_NAME;
+        return "AutoStun";
     }
 
     public boolean isEnabled() {
@@ -45,52 +42,49 @@ public class AutoStunModule implements ClientModule {
     @Override
     public void onEnable() {
         enabled = true;
-        sendHotbarMessage("AutoStun Enabled");
+        send("Enabled");
     }
 
     @Override
     public void onDisable() {
         enabled = false;
-        sendHotbarMessage("AutoStun Disabled");
+        send("Disabled");
     }
 
     @Override
     public void onTick() {
-        // nothing yet
-    }
 
-    // ✅ Trigger method required by TriggerBotMod
-    public void trigger() {
+        if (!enabled) return;
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        if (mc.player == null || mc.world == null) {
-            return;
+        if (mc.player == null || mc.world == null) return;
+
+        // Detect attack click
+        if (mc.options.attackKey.isPressed()) {
+
+            Entity target = findNearestTarget(mc, mc.player);
+
+            if (target == null) return;
+
+            int axeSlot = findHotbarSlot(
+                    mc.player.getInventory(),
+                    AxeItem.class
+            );
+
+            if (axeSlot == -1) {
+                send("No axe found");
+                return;
+            }
+
+            int oldSlot = mc.player.getInventory().getSelectedSlot();
+
+            swap(mc, axeSlot);
+
+            attack(mc, target);
+
+            swap(mc, oldSlot);
         }
-
-        Entity target = findNearestTarget(mc, mc.player);
-
-        if (target == null) {
-            sendHotbarMessage("No target found");
-            return;
-        }
-
-        int axeSlot = findHotbarSlot(mc.player.getInventory(), AxeItem.class);
-
-        if (axeSlot == -1) {
-            sendHotbarMessage("No axe found");
-            return;
-        }
-
-        int oldSlot = mc.player.getInventory().getSelectedSlot();
-
-        swapToSlot(mc, axeSlot);
-
-        attack(mc, target);
-
-        swapToSlot(mc, oldSlot);
-
-        sendHotbarMessage("Triggered");
     }
 
     private void attack(MinecraftClient mc, Entity target) {
@@ -100,9 +94,11 @@ public class AutoStunModule implements ClientModule {
         mc.interactionManager.attackEntity(mc.player, target);
 
         mc.player.swingHand(Hand.MAIN_HAND);
+
+        send("Triggered");
     }
 
-    private void swapToSlot(MinecraftClient mc, int slot) {
+    private void swap(MinecraftClient mc, int slot) {
 
         mc.player.getInventory().setSelectedSlot(slot);
 
@@ -114,7 +110,10 @@ public class AutoStunModule implements ClientModule {
         }
     }
 
-    private Entity findNearestTarget(MinecraftClient mc, ClientPlayerEntity player) {
+    private Entity findNearestTarget(
+            MinecraftClient mc,
+            ClientPlayerEntity player
+    ) {
 
         Entity closest = null;
 
@@ -141,13 +140,17 @@ public class AutoStunModule implements ClientModule {
         return closest;
     }
 
-    private <T> int findHotbarSlot(PlayerInventory inv, Class<T> itemClass) {
+    private <T> int findHotbarSlot(
+            PlayerInventory inv,
+            Class<T> itemClass
+    ) {
 
         for (int i = 0; i < 9; i++) {
 
             ItemStack stack = inv.getStack(i);
 
-            if (!stack.isEmpty() && itemClass.isInstance(stack.getItem())) {
+            if (!stack.isEmpty()
+                    && itemClass.isInstance(stack.getItem())) {
 
                 return i;
             }
@@ -156,14 +159,16 @@ public class AutoStunModule implements ClientModule {
         return -1;
     }
 
-    private void sendHotbarMessage(String msg) {
+    private void send(String text) {
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (mc.player == null) return;
 
         mc.player.sendMessage(
-                net.minecraft.text.Text.literal("[AutoStun] " + msg),
+                net.minecraft.text.Text.literal(
+                        "[AutoStun] " + text
+                ),
                 true
         );
     }
