@@ -14,33 +14,25 @@ public class TriggerBotMod implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
 
-        System.out.println("TRIGGERBOT INIT LOADED");
+        System.out.println("TRIGGERBOT LOADED");
 
-        // Register module
-        MODULE_MANAGER.register(new AutoStunModule());
+        AutoStunModule autoStun = new AutoStunModule();
 
-        // Register keybind
+        MODULE_MANAGER.register(autoStun);
+
+        // REGISTER THE SAME KEYBIND INSTANCE
         KeyBindingHelper.registerKeyBinding(AutoStunModule.KEYBIND);
 
-        // Main tick loop
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
-            if (AutoStunModule.KEYBIND.wasPressed()) {
+            while (AutoStunModule.KEYBIND.wasPressed()) {
 
                 System.out.println("R PRESSED");
 
-                AutoStunModule autoStun =
-                        (AutoStunModule) MODULE_MANAGER
-                                .find("AutoStun")
-                                .orElse(null);
-
-                if (autoStun != null) {
-
-                    if (!autoStun.isEnabled()) {
-                        autoStun.onEnable();
-                    } else {
-                        autoStun.trigger();
-                    }
+                if (!autoStun.isEnabled()) {
+                    autoStun.onEnable();
+                } else {
+                    autoStun.trigger();
                 }
             }
 
