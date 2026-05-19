@@ -24,7 +24,7 @@ public class TriggerBotMod implements ClientModInitializer {
                         "key.triggerbot.test",
                         InputUtil.Type.KEYSYM,
                         GLFW.GLFW_KEY_R,
-                        "key.categories.misc"
+                        KeyBinding.Category.MISC
                 )
         );
 
