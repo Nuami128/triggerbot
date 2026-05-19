@@ -60,31 +60,33 @@ public class AutoStunModule implements ClientModule {
 
         if (mc.player == null || mc.world == null) return;
 
-        // Detect attack click
-        if (mc.options.attackKey.isPressed()) {
+        // DEBUG MESSAGE
+        send("Ticking");
 
-            Entity target = findNearestTarget(mc, mc.player);
+        Entity target = findNearestTarget(mc, mc.player);
 
-            if (target == null) return;
-
-            int axeSlot = findHotbarSlot(
-                    mc.player.getInventory(),
-                    AxeItem.class
-            );
-
-            if (axeSlot == -1) {
-                send("No axe found");
-                return;
-            }
-
-            int oldSlot = mc.player.getInventory().getSelectedSlot();
-
-            swap(mc, axeSlot);
-
-            attack(mc, target);
-
-            swap(mc, oldSlot);
+        if (target == null) {
+            send("No target");
+            return;
         }
+
+        int axeSlot = findHotbarSlot(
+                mc.player.getInventory(),
+                AxeItem.class
+        );
+
+        if (axeSlot == -1) {
+            send("No axe");
+            return;
+        }
+
+        int oldSlot = mc.player.getInventory().getSelectedSlot();
+
+        swap(mc, axeSlot);
+
+        attack(mc, target);
+
+        swap(mc, oldSlot);
     }
 
     private void attack(MinecraftClient mc, Entity target) {
