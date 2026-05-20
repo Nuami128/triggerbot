@@ -3,12 +3,12 @@ package com.example.triggerbot.module.impl;
 import com.example.triggerbot.module.ClientModule;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+
 import net.minecraft.entity.player.PlayerInventory;
 
 import net.minecraft.item.AxeItem;
@@ -17,6 +17,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 
 import net.minecraft.util.Hand;
+import net.minecraft.util.hit.EntityHitResult;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -31,7 +32,7 @@ public class AutoStunModule implements ClientModule {
 
     private boolean enabled = false;
 
-    // tick state machine
+    // sequence stages
     private enum Stage {
         IDLE,
         SWAP,
@@ -40,9 +41,14 @@ public class AutoStunModule implements ClientModule {
     }
 
     private Stage stage = Stage.IDLE;
-    private int tickDelay = 0;
 
     private int savedSlot = -1;
+
+    private Entity currentTarget = null;
+
+    private long lastActionTime = 0L;
+
+    private static final long DELAY_MS = 50L;
 
     @Override
     public String getName() {
@@ -61,9 +67,13 @@ public class AutoStunModule implements ClientModule {
 
     @Override
     public void onDisable() {
+
         enabled = false;
+
         stage = Stage.IDLE;
-        tickDelay = 0;
+
+        currentTarget = null;
+
         send("Disabled");
     }
 
@@ -76,74 +86,155 @@ public class AutoStunModule implements ClientModule {
 
         if (mc.player == null || mc.world == null) return;
 
-        // don’t interrupt eating / shielding
+        // don't interrupt eating/shielding
         if (mc.player.isUsingItem()) return;
 
-        // cooldown gate (prevents spam CPS)
-        if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f) return;
+        // legit cooldown
+        if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f)
+            return;
 
-        // STATE MACHINE
+        // only activate while attacking
+        if (!mc.options.attackKey.isPressed())
+            return;
+
+        // ─────────────────────────────
+        // IDLE
+        // ─────────────────────────────
+
         if (stage == Stage.IDLE) {
 
-            Entity target = findNearestTarget(mc, mc.player);
+            Entity target = findCrosshairTarget(mc);
 
-            if (target == null) return;
+            if (target == null)
+                return;
+
+            currentTarget = target;
 
             stage = Stage.SWAP;
+
+            lastActionTime = System.currentTimeMillis();
+
             return;
         }
 
+        // ─────────────────────────────
+        // SWAP
+        // ─────────────────────────────
+
         if (stage == Stage.SWAP) {
+
+            if (!passedDelay())
+                return;
 
             savedSlot = mc.player.getInventory().getSelectedSlot();
 
-            int axeSlot = findHotbarSlot(mc.player.getInventory(), AxeItem.class);
+            int axeSlot = findHotbarSlot(
+                    mc.player.getInventory(),
+                    AxeItem.class
+            );
 
             if (axeSlot == -1) {
+
                 send("No axe");
-                stage = Stage.IDLE;
+
+                reset();
+
                 return;
             }
 
             swap(mc, axeSlot);
 
             stage = Stage.ATTACK;
-            tickDelay = 0;
+
+            lastActionTime = System.currentTimeMillis();
+
             return;
         }
+
+        // ─────────────────────────────
+        // ATTACK
+        // ─────────────────────────────
 
         if (stage == Stage.ATTACK) {
 
-            if (tickDelay++ < 1) return;
+            if (!passedDelay())
+                return;
 
-            Entity target = findNearestTarget(mc, mc.player);
+            Entity confirm = findCrosshairTarget(mc);
 
-            if (target != null) {
-                attack(mc, target);
+            // confirmation check
+            if (confirm == null || confirm != currentTarget) {
+
+                reset();
+
+                return;
             }
 
+            attack(mc, confirm);
+
             stage = Stage.RETURN;
-            tickDelay = 0;
+
+            lastActionTime = System.currentTimeMillis();
+
             return;
         }
 
+        // ─────────────────────────────
+        // RETURN
+        // ─────────────────────────────
+
         if (stage == Stage.RETURN) {
 
-            if (tickDelay++ < 1) return;
+            if (!passedDelay())
+                return;
 
             if (savedSlot != -1) {
+
                 swap(mc, savedSlot);
             }
 
-            stage = Stage.IDLE;
+            reset();
         }
     }
 
+    // ─────────────────────────────
+    // TARGETING
+    // ─────────────────────────────
+
+    private Entity findCrosshairTarget(MinecraftClient mc) {
+
+        if (!(mc.crosshairTarget instanceof EntityHitResult hit))
+            return null;
+
+        Entity entity = hit.getEntity();
+
+        if (!(entity instanceof LivingEntity living))
+            return null;
+
+        // must be shielding
+        if (!living.isBlocking())
+            return null;
+
+        // 3 block range
+        if (mc.player.squaredDistanceTo(entity) > 9.0)
+            return null;
+
+        return entity;
+    }
+
+    // ─────────────────────────────
+    // ACTIONS
+    // ─────────────────────────────
+
     private void attack(MinecraftClient mc, Entity target) {
 
-        if (mc.interactionManager == null) return;
+        if (mc.interactionManager == null)
+            return;
 
-        mc.interactionManager.attackEntity(mc.player, target);
+        mc.interactionManager.attackEntity(
+                mc.player,
+                target
+        );
 
         mc.player.swingHand(Hand.MAIN_HAND);
 
@@ -162,38 +253,21 @@ public class AutoStunModule implements ClientModule {
         }
     }
 
-    private Entity findNearestTarget(
-            MinecraftClient mc,
-            ClientPlayerEntity player
-    ) {
+    // ─────────────────────────────
+    // HELPERS
+    // ─────────────────────────────
 
-        Entity closest = null;
+    private boolean passedDelay() {
 
-        double closestDist = Double.MAX_VALUE;
+        return System.currentTimeMillis() - lastActionTime
+                >= DELAY_MS;
+    }
 
-        for (Entity e : mc.world.getEntities()) {
+    private void reset() {
 
-            if (!(e instanceof LivingEntity living)) continue;
+        stage = Stage.IDLE;
 
-            if (e == player) continue;
-
-            // ONLY shielders
-            if (!living.isBlocking()) continue;
-
-            double dist = player.squaredDistanceTo(e);
-
-            // 3 blocks
-            if (dist > 9.0) continue;
-
-            if (dist < closestDist) {
-
-                closestDist = dist;
-
-                closest = e;
-            }
-        }
-
-        return closest;
+        currentTarget = null;
     }
 
     private <T> int findHotbarSlot(
@@ -219,7 +293,8 @@ public class AutoStunModule implements ClientModule {
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        if (mc.player == null) return;
+        if (mc.player == null)
+            return;
 
         mc.player.sendMessage(
                 net.minecraft.text.Text.literal(
