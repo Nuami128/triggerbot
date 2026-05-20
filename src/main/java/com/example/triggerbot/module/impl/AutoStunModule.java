@@ -17,7 +17,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 
 import net.minecraft.util.Hand;
-import net.minecraft.util.hit.EntityHitResult;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -32,7 +31,6 @@ public class AutoStunModule implements ClientModule {
 
     private boolean enabled = false;
 
-    // sequence stages
     private enum Stage {
         IDLE,
         SWAP,
@@ -42,9 +40,9 @@ public class AutoStunModule implements ClientModule {
 
     private Stage stage = Stage.IDLE;
 
-    private int savedSlot = -1;
-
     private Entity currentTarget = null;
+
+    private int savedSlot = -1;
 
     private long lastActionTime = 0L;
 
@@ -61,7 +59,9 @@ public class AutoStunModule implements ClientModule {
 
     @Override
     public void onEnable() {
+
         enabled = true;
+
         send("Enabled");
     }
 
@@ -70,9 +70,7 @@ public class AutoStunModule implements ClientModule {
 
         enabled = false;
 
-        stage = Stage.IDLE;
-
-        currentTarget = null;
+        reset();
 
         send("Disabled");
     }
@@ -80,21 +78,24 @@ public class AutoStunModule implements ClientModule {
     @Override
     public void onTick() {
 
-        if (!enabled) return;
+        if (!enabled)
+            return;
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        if (mc.player == null || mc.world == null) return;
-
-        // don't interrupt eating/shielding
-        if (mc.player.isUsingItem()) return;
-
-        // legit cooldown
-        if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f)
+        if (mc.player == null || mc.world == null)
             return;
 
-        // only activate while attacking
+        // don't interrupt eating/shielding
+        if (mc.player.isUsingItem())
+            return;
+
+        // only while attacking
         if (!mc.options.attackKey.isPressed())
+            return;
+
+        // attack cooldown
+        if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f)
             return;
 
         // ─────────────────────────────
@@ -126,16 +127,18 @@ public class AutoStunModule implements ClientModule {
             if (!passedDelay())
                 return;
 
-            savedSlot = mc.player.getInventory().getSelectedSlot();
+            savedSlot =
+                    mc.player.getInventory().getSelectedSlot();
 
-            int axeSlot = findHotbarSlot(
-                    mc.player.getInventory(),
-                    AxeItem.class
-            );
+            int axeSlot =
+                    findHotbarSlot(
+                            mc.player.getInventory(),
+                            AxeItem.class
+                    );
 
             if (axeSlot == -1) {
 
-                send("No axe");
+                send("No axe found");
 
                 reset();
 
@@ -160,10 +163,12 @@ public class AutoStunModule implements ClientModule {
             if (!passedDelay())
                 return;
 
-            Entity confirm = findCrosshairTarget(mc);
+            Entity confirm =
+                    findCrosshairTarget(mc);
 
-            // confirmation check
-            if (confirm == null || confirm != currentTarget) {
+            // target moved / invalid
+            if (confirm == null
+                    || confirm != currentTarget) {
 
                 reset();
 
@@ -201,32 +206,126 @@ public class AutoStunModule implements ClientModule {
     // TARGETING
     // ─────────────────────────────
 
-    private Entity findCrosshairTarget(MinecraftClient mc) {
+    private Entity findCrosshairTarget(
+            MinecraftClient mc
+    ) {
 
-        if (!(mc.crosshairTarget instanceof EntityHitResult hit))
-            return null;
+        Entity bestTarget = null;
 
-        Entity entity = hit.getEntity();
+        double bestAngle = 999.0;
 
-        if (!(entity instanceof LivingEntity living))
-            return null;
+        for (Entity e : mc.world.getEntities()) {
 
-        // must be shielding
-        if (!living.isBlocking())
-            return null;
+            if (!(e instanceof LivingEntity living))
+                continue;
 
-        // 3 block range
-        if (mc.player.squaredDistanceTo(entity) > 9.0)
-            return null;
+            if (e == mc.player)
+                continue;
 
-        return entity;
+            if (!e.isAlive())
+                continue;
+
+            // must be shielding
+            if (!living.isBlocking())
+                continue;
+
+            // 3 block range
+            if (mc.player.squaredDistanceTo(e) > 9.0)
+                continue;
+
+            double angle =
+                    getAngleToEntity(mc, e);
+
+            // soft crosshair alignment
+            if (angle > 10.0)
+                continue;
+
+            if (angle < bestAngle) {
+
+                bestAngle = angle;
+
+                bestTarget = e;
+            }
+        }
+
+        return bestTarget;
+    }
+
+    private double getAngleToEntity(
+            MinecraftClient mc,
+            Entity entity
+    ) {
+
+        double dx =
+                entity.getX() - mc.player.getX();
+
+        double dy =
+                (entity.getY()
+                        + entity.getHeight() * 0.5)
+                        - (mc.player.getY()
+                        + mc.player.getEyeHeight(
+                        mc.player.getPose()));
+
+        double dz =
+                entity.getZ() - mc.player.getZ();
+
+        double distance =
+                Math.sqrt(dx * dx + dz * dz);
+
+        float targetYaw =
+                (float)Math.toDegrees(
+                        Math.atan2(dz, dx))
+                        - 90.0F;
+
+        float targetPitch =
+                (float)-Math.toDegrees(
+                        Math.atan2(dy, distance));
+
+        float yawDiff =
+                Math.abs(
+                        wrapDegrees(
+                                mc.player.getYaw()
+                                        - targetYaw
+                        )
+                );
+
+        float pitchDiff =
+                Math.abs(
+                        wrapDegrees(
+                                mc.player.getPitch()
+                                        - targetPitch
+                        )
+                );
+
+        return Math.sqrt(
+                yawDiff * yawDiff
+                        + pitchDiff * pitchDiff
+        );
+    }
+
+    private float wrapDegrees(float degrees) {
+
+        degrees = degrees % 360.0F;
+
+        if (degrees >= 180.0F) {
+            degrees -= 360.0F;
+        }
+
+        if (degrees < -180.0F) {
+            degrees += 360.0F;
+        }
+
+        return degrees;
     }
 
     // ─────────────────────────────
     // ACTIONS
     // ─────────────────────────────
 
-    private void attack(MinecraftClient mc, Entity target) {
+    private void attack(
+            MinecraftClient mc,
+            Entity target
+    ) {
 
         if (mc.interactionManager == null)
             return;
@@ -241,14 +340,21 @@ public class AutoStunModule implements ClientModule {
         send("Triggered");
     }
 
-    private void swap(MinecraftClient mc, int slot) {
+    private void swap(
+            MinecraftClient mc,
+            int slot
+    ) {
 
-        mc.player.getInventory().setSelectedSlot(slot);
+        mc.player
+                .getInventory()
+                .setSelectedSlot(slot);
 
         if (mc.getNetworkHandler() != null) {
 
             mc.getNetworkHandler().sendPacket(
-                    new UpdateSelectedSlotC2SPacket(slot)
+                    new UpdateSelectedSlotC2SPacket(
+                            slot
+                    )
             );
         }
     }
@@ -259,7 +365,8 @@ public class AutoStunModule implements ClientModule {
 
     private boolean passedDelay() {
 
-        return System.currentTimeMillis() - lastActionTime
+        return System.currentTimeMillis()
+                - lastActionTime
                 >= DELAY_MS;
     }
 
@@ -280,7 +387,8 @@ public class AutoStunModule implements ClientModule {
             ItemStack stack = inv.getStack(i);
 
             if (!stack.isEmpty()
-                    && itemClass.isInstance(stack.getItem())) {
+                    && itemClass.isInstance(
+                    stack.getItem())) {
 
                 return i;
             }
@@ -291,7 +399,8 @@ public class AutoStunModule implements ClientModule {
 
     private void send(String text) {
 
-        MinecraftClient mc = MinecraftClient.getInstance();
+        MinecraftClient mc =
+                MinecraftClient.getInstance();
 
         if (mc.player == null)
             return;
