@@ -17,9 +17,9 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
-import java.util.Optional;
-
 import org.lwjgl.glfw.GLFW;
+
+import java.util.Optional;
 
 public class AutoStunModule implements ClientModule {
 
@@ -32,6 +32,7 @@ public class AutoStunModule implements ClientModule {
             );
 
     private boolean enabled = false;
+
     private long lastActionTime = 0L;
 
     @Override
@@ -63,10 +64,11 @@ public class AutoStunModule implements ClientModule {
         if (!enabled) return;
         if (mc.player == null || mc.world == null) return;
 
-        // 🔒 PACKET TIMING SAFETY (fixes BadPacketsA)
+        // timing safety (prevents packet spam / BadPacketsA)
         if (System.currentTimeMillis() - lastActionTime < 100)
             return;
 
+        // cooldown check
         if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f)
             return;
 
@@ -76,7 +78,7 @@ public class AutoStunModule implements ClientModule {
         int axeSlot = findAxe(mc);
         if (axeSlot == -1) return;
 
-        // SWAP
+        // swap
         mc.player.getInventory().setSelectedSlot(axeSlot);
 
         if (mc.getNetworkHandler() != null) {
@@ -87,7 +89,7 @@ public class AutoStunModule implements ClientModule {
 
         lastActionTime = System.currentTimeMillis();
 
-        // ATTACK
+        // attack
         if (mc.interactionManager != null) {
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(Hand.MAIN_HAND);
@@ -101,11 +103,7 @@ public class AutoStunModule implements ClientModule {
         Vec3d eyePos = mc.player.getEyePos();
         Vec3d look = mc.player.getRotationVec(1.0f);
 
-        Vec3d reachVec = eyePos.add(
-                look.x * 3.0,
-                look.y * 3.0,
-                look.z * 3.0
-        );
+        Vec3d reachVec = eyePos.add(look.multiply(3.0));
 
         for (Entity e : mc.world.getEntities()) {
 
@@ -114,6 +112,7 @@ public class AutoStunModule implements ClientModule {
             if (!e.isAlive()) continue;
             if (e.isSpectator()) continue;
 
+            // STRICT VANILLA HITBOX (no expand)
             Box box = e.getBoundingBox();
 
             Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
