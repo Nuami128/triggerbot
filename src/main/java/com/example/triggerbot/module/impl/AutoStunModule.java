@@ -17,9 +17,9 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
-import org.lwjgl.glfw.GLFW;
-
 import java.util.Optional;
+
+import org.lwjgl.glfw.GLFW;
 
 public class AutoStunModule implements ClientModule {
 
@@ -32,6 +32,7 @@ public class AutoStunModule implements ClientModule {
             );
 
     private boolean enabled = false;
+    private long lastActionTime = 0L;
 
     @Override
     public String getName() {
@@ -62,10 +63,12 @@ public class AutoStunModule implements ClientModule {
         if (!enabled) return;
         if (mc.player == null || mc.world == null) return;
 
-        // SAFETY CHECKS
-        if (mc.player.isDead()) return;
-        if (mc.player.isUsingItem()) return;
-        if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f) return;
+        // 🔒 PACKET TIMING SAFETY (fixes BadPacketsA)
+        if (System.currentTimeMillis() - lastActionTime < 100)
+            return;
+
+        if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f)
+            return;
 
         Entity target = findTarget(mc);
         if (target == null) return;
@@ -73,7 +76,7 @@ public class AutoStunModule implements ClientModule {
         int axeSlot = findAxe(mc);
         if (axeSlot == -1) return;
 
-        // swap
+        // SWAP
         mc.player.getInventory().setSelectedSlot(axeSlot);
 
         if (mc.getNetworkHandler() != null) {
@@ -82,11 +85,15 @@ public class AutoStunModule implements ClientModule {
             );
         }
 
-        // attack
+        lastActionTime = System.currentTimeMillis();
+
+        // ATTACK
         if (mc.interactionManager != null) {
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(Hand.MAIN_HAND);
         }
+
+        lastActionTime = System.currentTimeMillis();
     }
 
     private Entity findTarget(MinecraftClient mc) {
