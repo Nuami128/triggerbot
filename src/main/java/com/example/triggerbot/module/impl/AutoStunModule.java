@@ -78,10 +78,10 @@ public class AutoStunModule implements ClientModule {
                 int axeSlot = findAxe(mc);
                 if (axeSlot == -1) return;
 
-                originalSlot = mc.player.getInventory().selectedSlot;
+                originalSlot = mc.player.getInventory().getSelectedSlot;
 
                 if (originalSlot != axeSlot) {
-                    mc.player.getInventory().selectedSlot = axeSlot;
+                    mc.player.getInventory().setSelectedSlot = axeSlot;
                     mc.getNetworkHandler().sendPacket(
                             new UpdateSelectedSlotC2SPacket(axeSlot)
                     );
@@ -118,8 +118,8 @@ public class AutoStunModule implements ClientModule {
     }
 
     private void swapBack(MinecraftClient mc) {
-        if (originalSlot != -1 && mc.player.getInventory().selectedSlot != originalSlot) {
-            mc.player.getInventory().selectedSlot = originalSlot;
+        if (originalSlot != -1 && mc.player.getInventory().getSelectedSlot != originalSlot) {
+            mc.player.getInventory().setSelectedSlot = originalSlot;
             mc.getNetworkHandler().sendPacket(
                     new UpdateSelectedSlotC2SPacket(originalSlot)
             );
