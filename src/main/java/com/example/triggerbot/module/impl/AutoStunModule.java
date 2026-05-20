@@ -94,17 +94,14 @@ public class AutoStunModule implements ClientModule {
         if (!mc.options.attackKey.isPressed())
             return;
 
-        // attack cooldown
+        // cooldown
         if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f)
             return;
 
-        // ─────────────────────────────
         // IDLE
-        // ─────────────────────────────
-
         if (stage == Stage.IDLE) {
 
-            Entity target = findCrosshairTarget(mc);
+            Entity target = findTarget(mc);
 
             if (target == null)
                 return;
@@ -118,10 +115,7 @@ public class AutoStunModule implements ClientModule {
             return;
         }
 
-        // ─────────────────────────────
         // SWAP
-        // ─────────────────────────────
-
         if (stage == Stage.SWAP) {
 
             if (!passedDelay())
@@ -138,7 +132,7 @@ public class AutoStunModule implements ClientModule {
 
             if (axeSlot == -1) {
 
-                send("No axe found");
+                send("No axe");
 
                 reset();
 
@@ -154,19 +148,14 @@ public class AutoStunModule implements ClientModule {
             return;
         }
 
-        // ─────────────────────────────
         // ATTACK
-        // ─────────────────────────────
-
         if (stage == Stage.ATTACK) {
 
             if (!passedDelay())
                 return;
 
-            Entity confirm =
-                    findCrosshairTarget(mc);
+            Entity confirm = findTarget(mc);
 
-            // target moved / invalid
             if (confirm == null
                     || confirm != currentTarget) {
 
@@ -184,10 +173,7 @@ public class AutoStunModule implements ClientModule {
             return;
         }
 
-        // ─────────────────────────────
         // RETURN
-        // ─────────────────────────────
-
         if (stage == Stage.RETURN) {
 
             if (!passedDelay())
@@ -202,21 +188,15 @@ public class AutoStunModule implements ClientModule {
         }
     }
 
-    // ─────────────────────────────
-    // TARGETING
-    // ─────────────────────────────
+    private Entity findTarget(MinecraftClient mc) {
 
-    private Entity findCrosshairTarget(
-            MinecraftClient mc
-    ) {
-
-        Entity bestTarget = null;
+        Entity best = null;
 
         double bestAngle = 999.0;
 
         for (Entity e : mc.world.getEntities()) {
 
-            if (!(e instanceof LivingEntity living))
+            if (!(e instanceof LivingEntity))
                 continue;
 
             if (e == mc.player)
@@ -225,30 +205,26 @@ public class AutoStunModule implements ClientModule {
             if (!e.isAlive())
                 continue;
 
-            // must be shielding
-            if (!living.isBlocking())
-                continue;
-
-            // 3 block range
+            // 3 blocks
             if (mc.player.squaredDistanceTo(e) > 9.0)
                 continue;
 
             double angle =
                     getAngleToEntity(mc, e);
 
-            // soft crosshair alignment
-            if (angle > 10.0)
+            // forgiving alignment
+            if (angle > 25.0)
                 continue;
 
             if (angle < bestAngle) {
 
                 bestAngle = angle;
 
-                bestTarget = e;
+                best = e;
             }
         }
 
-        return bestTarget;
+        return best;
     }
 
     private double getAngleToEntity(
@@ -318,10 +294,6 @@ public class AutoStunModule implements ClientModule {
         return degrees;
     }
 
-    // ─────────────────────────────
-    // ACTIONS
-    // ─────────────────────────────
-
     private void attack(
             MinecraftClient mc,
             Entity target
@@ -358,10 +330,6 @@ public class AutoStunModule implements ClientModule {
             );
         }
     }
-
-    // ─────────────────────────────
-    // HELPERS
-    // ─────────────────────────────
 
     private boolean passedDelay() {
 
