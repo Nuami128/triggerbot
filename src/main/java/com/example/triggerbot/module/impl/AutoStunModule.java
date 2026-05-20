@@ -15,16 +15,22 @@ import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 
 import net.minecraft.util.Hand;
 
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+
+import java.util.Optional;
+
 import org.lwjgl.glfw.GLFW;
 
 public class AutoStunModule implements ClientModule {
 
-    public static final KeyBinding KEYBIND = new KeyBinding(
-            "key.triggerbot.autostun",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_R,
-            KeyBinding.Category.MISC
-    );
+    public static final KeyBinding KEYBIND =
+            new KeyBinding(
+                    "key.triggerbot.autostun",
+                    InputUtil.Type.KEYSYM,
+                    GLFW.GLFW_KEY_R,
+                    KeyBinding.Category.MISC
+            );
 
     private boolean enabled = false;
 
@@ -59,10 +65,77 @@ public class AutoStunModule implements ClientModule {
         if (!enabled)
             return;
 
-        MinecraftClient mc = MinecraftClient.getInstance();
+        MinecraftClient mc =
+                MinecraftClient.getInstance();
 
-        if (mc.player == null || mc.world == null)
+        if (mc.player == null
+                || mc.world == null)
             return;
+
+        // cooldown
+        if (mc.player.getAttackCooldownProgress(0.5f)
+                < 0.92f)
+            return;
+
+        Entity target = findTarget(mc);
+
+        if (target == null)
+            return;
+
+        int axeSlot = findAxe(mc);
+
+        if (axeSlot == -1) {
+
+            send("No axe");
+
+            return;
+        }
+
+        // swap
+        mc.player.getInventory()
+                .setSelectedSlot(axeSlot);
+
+        if (mc.getNetworkHandler() != null) {
+
+            mc.getNetworkHandler().sendPacket(
+                    new UpdateSelectedSlotC2SPacket(
+                            axeSlot
+                    )
+            );
+        }
+
+        // attack
+        if (mc.interactionManager != null) {
+
+            mc.interactionManager.attackEntity(
+                    mc.player,
+                    target
+            );
+
+            mc.player.swingHand(Hand.MAIN_HAND);
+
+            send("Triggered");
+        }
+    }
+
+    private Entity findTarget(
+            MinecraftClient mc
+    ) {
+
+        Vec3d eyePos =
+                mc.player.getEyePos();
+
+        Vec3d look =
+                mc.player.getRotationVec(1.0f);
+
+        double reach = 3.0;
+
+        Vec3d reachVec =
+                eyePos.add(
+                        look.x * reach,
+                        look.y * reach,
+                        look.z * reach
+                );
 
         for (Entity e : mc.world.getEntities()) {
 
@@ -72,49 +145,31 @@ public class AutoStunModule implements ClientModule {
             if (e == mc.player)
                 continue;
 
-            // 3 blocks
-            if (mc.player.squaredDistanceTo(e) > 9.0)
+            if (!e.isAlive())
                 continue;
 
-            int axeSlot = findAxe(mc);
+            Box box =
+                    e.getBoundingBox()
+                            .expand(0.15);
 
-            if (axeSlot == -1) {
+            Optional<Vec3d> hit =
+                    box.raycast(
+                            eyePos,
+                            reachVec
+                    );
 
-                send("No axe");
+            if (hit.isPresent()) {
 
-                return;
+                return e;
             }
-
-            // swap
-            mc.player.getInventory().setSelectedSlot(axeSlot);
-
-            if (mc.getNetworkHandler() != null) {
-
-                mc.getNetworkHandler().sendPacket(
-                        new UpdateSelectedSlotC2SPacket(
-                                axeSlot
-                        )
-                );
-            }
-
-            // attack
-            if (mc.interactionManager != null) {
-
-                mc.interactionManager.attackEntity(
-                        mc.player,
-                        e
-                );
-
-                mc.player.swingHand(Hand.MAIN_HAND);
-
-                send("Triggered");
-            }
-
-            return;
         }
+
+        return null;
     }
 
-    private int findAxe(MinecraftClient mc) {
+    private int findAxe(
+            MinecraftClient mc
+    ) {
 
         for (int i = 0; i < 9; i++) {
 
