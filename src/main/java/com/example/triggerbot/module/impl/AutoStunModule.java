@@ -9,17 +9,13 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 
-import net.minecraft.item.AxeItem;
-
-import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
-
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
-import java.util.Optional;
-
 import org.lwjgl.glfw.GLFW;
+
+import java.util.Optional;
 
 public class AutoStunModule implements ClientModule {
 
@@ -32,7 +28,6 @@ public class AutoStunModule implements ClientModule {
             );
 
     private boolean enabled = false;
-    private long lastActionTime = 0L;
 
     @Override
     public String getName() {
@@ -63,37 +58,13 @@ public class AutoStunModule implements ClientModule {
         if (!enabled) return;
         if (mc.player == null || mc.world == null) return;
 
-        // 🔒 PACKET TIMING SAFETY (fixes BadPacketsA)
-        if (System.currentTimeMillis() - lastActionTime < 100)
-            return;
-
-        if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f)
-            return;
-
         Entity target = findTarget(mc);
         if (target == null) return;
 
-        int axeSlot = findAxe(mc);
-        if (axeSlot == -1) return;
+        if (mc.interactionManager == null) return;
 
-        // SWAP
-        mc.player.getInventory().setSelectedSlot(axeSlot);
-
-        if (mc.getNetworkHandler() != null) {
-            mc.getNetworkHandler().sendPacket(
-                    new UpdateSelectedSlotC2SPacket(axeSlot)
-            );
-        }
-
-        lastActionTime = System.currentTimeMillis();
-
-        // ATTACK
-        if (mc.interactionManager != null) {
-            mc.interactionManager.attackEntity(mc.player, target);
-            mc.player.swingHand(Hand.MAIN_HAND);
-        }
-
-        lastActionTime = System.currentTimeMillis();
+        mc.interactionManager.attackEntity(mc.player, target);
+        mc.player.swingHand(Hand.MAIN_HAND);
     }
 
     private Entity findTarget(MinecraftClient mc) {
@@ -112,7 +83,6 @@ public class AutoStunModule implements ClientModule {
             if (!(e instanceof LivingEntity)) continue;
             if (e == mc.player) continue;
             if (!e.isAlive()) continue;
-            if (e.isSpectator()) continue;
 
             Box box = e.getBoundingBox();
 
@@ -126,21 +96,12 @@ public class AutoStunModule implements ClientModule {
         return null;
     }
 
-    private int findAxe(MinecraftClient mc) {
-
-        for (int i = 0; i < 9; i++) {
-            if (mc.player.getInventory().getStack(i).getItem() instanceof AxeItem) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
     private void send(String msg) {
-        if (MinecraftClient.getInstance().player == null) return;
+        MinecraftClient mc = MinecraftClient.getInstance();
 
-        MinecraftClient.getInstance().player.sendMessage(
+        if (mc.player == null) return;
+
+        mc.player.sendMessage(
                 net.minecraft.text.Text.literal("[AutoStun] " + msg),
                 true
         );
