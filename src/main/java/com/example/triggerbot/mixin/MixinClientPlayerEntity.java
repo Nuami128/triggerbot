@@ -10,12 +10,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayerEntity.class)
 public class MixinClientPlayerEntity {
 
-    @Inject(method = "tick", at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/network/ClientPlayerEntity;sendMovementPackets()V",
-            shift = At.Shift.AFTER
-    ))
-    private void onAfterMovementPackets(CallbackInfo ci) {
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void onTickEnd(CallbackInfo ci) {
         ModuleManager.getInstance().postMovementAll();
     }
 }
