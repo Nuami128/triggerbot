@@ -66,6 +66,13 @@ public final class ModuleManager {
         }
     }
 
+    /** Calls {@link ClientModule#onPostMovement()} on every registered module. */
+    public void postMovementAll() {
+        for (ClientModule module : modules) {
+            module.onPostMovement();
+        }
+    }
+
     /** Enables a module by name, calling its {@link ClientModule#onEnable()}. */
     public void enable(String name) {
         find(name).ifPresent(ClientModule::onEnable);
