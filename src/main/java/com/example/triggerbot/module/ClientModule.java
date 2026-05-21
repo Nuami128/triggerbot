@@ -29,4 +29,3 @@ public interface ClientModule {
      */
     default void onPostMovement() {}
 }
-}
