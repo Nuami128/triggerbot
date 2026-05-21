@@ -7,6 +7,7 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.AxeItem;
+import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -23,8 +24,13 @@ public class AutoStunModule implements ClientModule {
             KeyBinding.Category.MISC
     );
 
+    private enum State { IDLE, SWAPPED, COOLDOWN }
+
     private boolean enabled = false;
-    private int attackCooldownTicks = 0;
+    private State state = State.IDLE;
+    private int originalSlot = -1;
+    private int tickCounter = 0;
+    private Entity cachedTarget = null;
 
     @Override
     public String getName() { return "AutoStun"; }
@@ -37,7 +43,9 @@ public class AutoStunModule implements ClientModule {
     @Override
     public void onDisable() {
         enabled = false;
-        attackCooldownTicks = 0;
+        state = State.IDLE;
+        tickCounter = 0;
+        cachedTarget = null;
         send("Disabled");
     }
 
@@ -55,27 +63,68 @@ public class AutoStunModule implements ClientModule {
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
 
-        if (attackCooldownTicks > 0) {
-            attackCooldownTicks--;
-            return;
+        tickCounter++;
+
+        switch (state) {
+
+            case IDLE -> {
+                if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f) return;
+
+                cachedTarget = findTarget(mc);
+                if (cachedTarget == null) return;
+
+                int axeSlot = findAxe(mc);
+                if (axeSlot == -1) return;
+
+                originalSlot = mc.player.getInventory().getSelectedSlot();
+
+                if (originalSlot != axeSlot) {
+                    // Send slot packet at tick HEAD before movement
+                    mc.player.getInventory().setSelectedSlot(axeSlot);
+                    mc.getNetworkHandler().sendPacket(
+                            new UpdateSelectedSlotC2SPacket(axeSlot)
+                    );
+                }
+
+                tickCounter = 0;
+                state = State.SWAPPED;
+            }
+
+            case SWAPPED -> {
+                // Wait 1 tick then attack — slot packet was sent last tick HEAD
+                if (tickCounter < 1) return;
+
+                if (cachedTarget == null || !cachedTarget.isAlive() || cachedTarget.isRemoved()) {
+                    swapBack(mc);
+                    state = State.IDLE;
+                    return;
+                }
+
+                mc.interactionManager.attackEntity(mc.player, cachedTarget);
+                mc.player.swingHand(Hand.MAIN_HAND);
+
+                swapBack(mc);
+                tickCounter = 0;
+                state = State.COOLDOWN;
+            }
+
+            case COOLDOWN -> {
+                if (tickCounter >= 8) {
+                    cachedTarget = null;
+                    state = State.IDLE;
+                }
+            }
         }
+    }
 
-        if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f) return;
-
-        Entity target = findTarget(mc);
-        if (target == null) return;
-
-        int axeSlot = findAxe(mc);
-        if (axeSlot == -1) return;
-
-        int originalSlot = mc.player.getInventory().getSelectedSlot();
-
-        mc.player.getInventory().setSelectedSlot(axeSlot);
-        mc.interactionManager.attackEntity(mc.player, target);
-        mc.player.swingHand(Hand.MAIN_HAND);
-        mc.player.getInventory().setSelectedSlot(originalSlot);
-
-        attackCooldownTicks = 10;
+    private void swapBack(MinecraftClient mc) {
+        int current = mc.player.getInventory().getSelectedSlot();
+        if (originalSlot != -1 && current != originalSlot) {
+            mc.player.getInventory().setSelectedSlot(originalSlot);
+            mc.getNetworkHandler().sendPacket(
+                    new UpdateSelectedSlotC2SPacket(originalSlot)
+            );
+        }
     }
 
     private Entity findTarget(MinecraftClient mc) {
