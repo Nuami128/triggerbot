@@ -50,17 +50,15 @@ public class AutoStunModule implements ClientModule {
     }
 
     @Override
-    public void onTick() {
-        // intentionally empty — logic moved to onPostMovement()
-    }
+    public void onTick() {}
 
-    // Called from MixinClientPlayerEntity after sendMovementPackets()
+    @Override
     public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (!enabled) return;
         if (mc.player == null || mc.world == null) return;
-        if (mc.currentScreen != null) return;       // fixes BadPacketsA
+        if (mc.currentScreen != null) return;
         if (mc.player.isDead()) return;
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
@@ -80,19 +78,25 @@ public class AutoStunModule implements ClientModule {
 
                 originalSlot = mc.player.getInventory().getSelectedSlot();
 
+                // Only send if slot actually changes
                 if (originalSlot != axeSlot) {
                     mc.player.getInventory().setSelectedSlot(axeSlot);
                     mc.getNetworkHandler().sendPacket(
                             new UpdateSelectedSlotC2SPacket(axeSlot)
                     );
+                    tickCounter = 0;
+                    state = State.SWAPPED;
                 }
-
-                tickCounter = 0;
-                state = State.SWAPPED;
+                // If axe is already selected, skip straight to attack next tick
+                else {
+                    tickCounter = 0;
+                    state = State.SWAPPED;
+                }
             }
 
             case SWAPPED -> {
-                if (tickCounter < 2) return;
+                // Wait 3 full ticks after slot change before attacking
+                if (tickCounter < 3) return;
 
                 if (cachedTarget == null || !cachedTarget.isAlive() || cachedTarget.isRemoved()) {
                     swapBack(mc);
@@ -109,7 +113,7 @@ public class AutoStunModule implements ClientModule {
             }
 
             case COOLDOWN -> {
-                if (tickCounter >= 4) {
+                if (tickCounter >= 5) {
                     cachedTarget = null;
                     state = State.IDLE;
                 }
@@ -118,7 +122,8 @@ public class AutoStunModule implements ClientModule {
     }
 
     private void swapBack(MinecraftClient mc) {
-        if (originalSlot != -1 && mc.player.getInventory().getSelectedSlot() != originalSlot) {
+        int current = mc.player.getInventory().getSelectedSlot();
+        if (originalSlot != -1 && current != originalSlot) {
             mc.player.getInventory().setSelectedSlot(originalSlot);
             mc.getNetworkHandler().sendPacket(
                     new UpdateSelectedSlotC2SPacket(originalSlot)
@@ -138,7 +143,8 @@ public class AutoStunModule implements ClientModule {
             if (e.isRemoved()) continue;
             if (e.isSpectator()) continue;
 
-            Box box = e.getBoundingBox().expand(0.1);
+            // Strict vanilla hitbox, no expand
+            Box box = e.getBoundingBox();
             Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
             if (hit.isPresent()) return e;
         }
