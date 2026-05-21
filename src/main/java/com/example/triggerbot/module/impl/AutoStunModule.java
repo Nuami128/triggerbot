@@ -24,6 +24,7 @@ public class AutoStunModule implements ClientModule {
     );
 
     private boolean enabled = false;
+    private int attackCooldownTicks = 0;
 
     @Override
     public String getName() { return "AutoStun"; }
@@ -34,7 +35,11 @@ public class AutoStunModule implements ClientModule {
     public void onEnable() { enabled = true; send("Enabled"); }
 
     @Override
-    public void onDisable() { enabled = false; send("Disabled"); }
+    public void onDisable() {
+        enabled = false;
+        attackCooldownTicks = 0;
+        send("Disabled");
+    }
 
     @Override
     public void onTick() {}
@@ -49,6 +54,12 @@ public class AutoStunModule implements ClientModule {
         if (mc.player.isDead()) return;
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
+
+        if (attackCooldownTicks > 0) {
+            attackCooldownTicks--;
+            return;
+        }
+
         if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f) return;
 
         Entity target = findTarget(mc);
@@ -59,15 +70,12 @@ public class AutoStunModule implements ClientModule {
 
         int originalSlot = mc.player.getInventory().getSelectedSlot();
 
-        // Silently swap client-side only — no packet
         mc.player.getInventory().setSelectedSlot(axeSlot);
-
-        // Attack with axe
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
-
-        // Silently restore — no packet
         mc.player.getInventory().setSelectedSlot(originalSlot);
+
+        attackCooldownTicks = 10;
     }
 
     private Entity findTarget(MinecraftClient mc) {
