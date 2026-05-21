@@ -22,4 +22,11 @@ public interface ClientModule {
      * Implementations are responsible for checking their own enabled state.
      */
     void onTick();
+
+    /**
+     * Called every client tick after movement packets have been sent.
+     * Safe to send hotbar/attack packets here without triggering Grim Post.
+     */
+    default void onPostMovement() {}
+}
 }
