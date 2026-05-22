@@ -2,8 +2,6 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.ClientModule;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.AxeItem;
@@ -11,18 +9,10 @@ import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.Optional;
 
 public class AutoStunModule implements ClientModule {
-
-    public static final KeyBinding KEYBIND = new KeyBinding(
-            "key.triggerbot.autostun",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_R,
-            KeyBinding.Category.MISC
-    );
 
     private enum State { IDLE, SWAPPED, SWAPPING_BACK, COOLDOWN }
 
@@ -39,7 +29,12 @@ public class AutoStunModule implements ClientModule {
     public boolean isEnabled() { return enabled; }
 
     @Override
-    public void onEnable() { enabled = true; send("Enabled"); }
+    public void onEnable() {
+        enabled = true;
+        state = State.IDLE;
+        tickCounter = 0;
+        cachedTarget = null;
+    }
 
     @Override
     public void onDisable() {
@@ -48,7 +43,6 @@ public class AutoStunModule implements ClientModule {
         tickCounter = 0;
         cachedTarget = null;
         lastProcessedTick = -1L;
-        send("Disabled");
     }
 
     @Override
@@ -65,7 +59,6 @@ public class AutoStunModule implements ClientModule {
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
 
-        // Only run once per world tick
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
         lastProcessedTick = currentTick;
@@ -121,7 +114,7 @@ public class AutoStunModule implements ClientModule {
             }
 
             case COOLDOWN -> {
-                if (tickCounter >= 12) {
+                if (tickCounter >= 20) {
                     cachedTarget = null;
                     state = State.IDLE;
                 }
@@ -164,13 +157,5 @@ public class AutoStunModule implements ClientModule {
                 return i;
         }
         return -1;
-    }
-
-    private void send(String msg) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return;
-        mc.player.sendMessage(
-                net.minecraft.text.Text.literal("[AutoStun] " + msg), true
-        );
     }
 }
