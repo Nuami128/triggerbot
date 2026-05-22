@@ -24,7 +24,7 @@ public class AutoStunModule implements ClientModule {
             KeyBinding.Category.MISC
     );
 
-    private enum State { IDLE, SWAPPED, COOLDOWN }
+    private enum State { IDLE, SWAPPED, SWAPPING_BACK, COOLDOWN }
 
     private boolean enabled = false;
     private State state = State.IDLE;
@@ -79,7 +79,6 @@ public class AutoStunModule implements ClientModule {
                 originalSlot = mc.player.getInventory().getSelectedSlot();
 
                 if (originalSlot != axeSlot) {
-                    // Send slot packet at tick HEAD before movement
                     mc.player.getInventory().setSelectedSlot(axeSlot);
                     mc.getNetworkHandler().sendPacket(
                             new UpdateSelectedSlotC2SPacket(axeSlot)
@@ -91,17 +90,25 @@ public class AutoStunModule implements ClientModule {
             }
 
             case SWAPPED -> {
-                // Wait 1 tick then attack — slot packet was sent last tick HEAD
-                if (tickCounter < 1) return;
+                // Wait 3 ticks for Grim to acknowledge the slot change
+                if (tickCounter < 3) return;
 
                 if (cachedTarget == null || !cachedTarget.isAlive() || cachedTarget.isRemoved()) {
-                    swapBack(mc);
-                    state = State.IDLE;
+                    tickCounter = 0;
+                    state = State.SWAPPING_BACK;
                     return;
                 }
 
                 mc.interactionManager.attackEntity(mc.player, cachedTarget);
                 mc.player.swingHand(Hand.MAIN_HAND);
+
+                tickCounter = 0;
+                state = State.SWAPPING_BACK;
+            }
+
+            case SWAPPING_BACK -> {
+                // Wait 2 ticks after attack before swapping back
+                if (tickCounter < 2) return;
 
                 swapBack(mc);
                 tickCounter = 0;
@@ -109,7 +116,8 @@ public class AutoStunModule implements ClientModule {
             }
 
             case COOLDOWN -> {
-                if (tickCounter >= 8) {
+                // 12 tick cooldown before next cycle
+                if (tickCounter >= 12) {
                     cachedTarget = null;
                     state = State.IDLE;
                 }
