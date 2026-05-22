@@ -31,6 +31,7 @@ public class AutoStunModule implements ClientModule {
     private int originalSlot = -1;
     private int tickCounter = 0;
     private Entity cachedTarget = null;
+    private long lastProcessedTick = -1L;
 
     @Override
     public String getName() { return "AutoStun"; }
@@ -46,6 +47,7 @@ public class AutoStunModule implements ClientModule {
         state = State.IDLE;
         tickCounter = 0;
         cachedTarget = null;
+        lastProcessedTick = -1L;
         send("Disabled");
     }
 
@@ -62,6 +64,11 @@ public class AutoStunModule implements ClientModule {
         if (mc.player.isDead()) return;
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
+
+        // Only run once per world tick
+        long currentTick = mc.world.getTime();
+        if (currentTick == lastProcessedTick) return;
+        lastProcessedTick = currentTick;
 
         tickCounter++;
 
@@ -90,7 +97,6 @@ public class AutoStunModule implements ClientModule {
             }
 
             case SWAPPED -> {
-                // Wait 3 ticks for Grim to acknowledge the slot change
                 if (tickCounter < 3) return;
 
                 if (cachedTarget == null || !cachedTarget.isAlive() || cachedTarget.isRemoved()) {
@@ -107,7 +113,6 @@ public class AutoStunModule implements ClientModule {
             }
 
             case SWAPPING_BACK -> {
-                // Wait 2 ticks after attack before swapping back
                 if (tickCounter < 2) return;
 
                 swapBack(mc);
@@ -116,7 +121,6 @@ public class AutoStunModule implements ClientModule {
             }
 
             case COOLDOWN -> {
-                // 12 tick cooldown before next cycle
                 if (tickCounter >= 12) {
                     cachedTarget = null;
                     state = State.IDLE;
