@@ -64,7 +64,7 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        if (mc.player.getAttackCooldownProgress(1.0f) < 1.0f) return;
+        if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
 
         Entity target = findTarget(mc);
         if (target == null) return;
@@ -75,7 +75,7 @@ public class TriggerBotModule implements ClientModule {
                 && CombatUtil.isFacingUs(mc, target)
                 && !autoStun.isEnabled()) {
             autoStun.onEnable();
-            cooldownTicks = 10;
+            cooldownTicks = 1;
             return;
         }
 
@@ -83,7 +83,7 @@ public class TriggerBotModule implements ClientModule {
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
-        cooldownTicks = 10;
+        cooldownTicks = 1;
     }
 
     private Entity findTarget(MinecraftClient mc) {
