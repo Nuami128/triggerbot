@@ -3,6 +3,7 @@ package com.example.triggerbot.module.impl;
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 
@@ -18,33 +19,40 @@ public class InventoryEatModule extends EmptyModule {
 
         if (mc.player == null || mc.world == null) return;
         if (mc.interactionManager == null) return;
-
-        // Only activate when inventory is open
         if (!(mc.currentScreen instanceof InventoryScreen)) return;
 
-        // Check if player needs food
+        // Keep holding the right click while inventory is open and eating
+        if (mc.player.isUsingItem()) {
+            mc.interactionManager.interactItem(mc.player, getEatingHand(mc));
+        }
+    }
+
+    // Called from mixin when inventory screen opens
+    public void tryEat() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.interactionManager == null) return;
         if (mc.player.getHungerManager().getFoodLevel() >= 20) return;
 
-        // Try offhand first, then main hand
-        Hand hand = null;
+        Hand hand = getEatingHand(mc);
+        if (hand == null) return;
+
+        mc.interactionManager.interactItem(mc.player, hand);
+    }
+
+    private Hand getEatingHand(MinecraftClient mc) {
+        if (mc.player == null) return null;
 
         ItemStack offhand = mc.player.getOffHandStack();
         ItemStack mainhand = mc.player.getMainHandStack();
 
-        if (isFood(offhand)) {
-            hand = Hand.OFF_HAND;
-        } else if (isFood(mainhand)) {
-            hand = Hand.MAIN_HAND;
-        }
+        if (isFood(offhand)) return Hand.OFF_HAND;
+        if (isFood(mainhand)) return Hand.MAIN_HAND;
 
-        if (hand == null) return;
-
-        // Simulate holding right click to eat
-        mc.interactionManager.interactItem(mc.player, hand);
+        return null;
     }
 
     private boolean isFood(ItemStack stack) {
-    if (stack == null || stack.isEmpty()) return false;
-    return stack.contains(net.minecraft.component.DataComponentTypes.FOOD);
+        if (stack == null || stack.isEmpty()) return false;
+        return stack.contains(DataComponentTypes.FOOD);
     }
 }
