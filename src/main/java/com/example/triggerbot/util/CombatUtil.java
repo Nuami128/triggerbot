@@ -1,3 +1,4 @@
+
 package com.example.triggerbot.util;
 
 import net.minecraft.client.MinecraftClient;
@@ -10,18 +11,15 @@ import net.minecraft.util.math.Vec3d;
 
 public class CombatUtil {
 
-    // Check if the local player is busy (eating or shielding)
     public static boolean isPlayerBusy(MinecraftClient mc) {
         if (mc.player == null) return false;
         return mc.player.isUsingItem();
     }
 
-    // Check if a target is actively shielding (blocking)
     public static boolean isShielding(LivingEntity entity) {
         return entity.isBlocking();
     }
 
-    // Check if the target is facing us (shield is facing toward us)
     public static boolean isFacingUs(MinecraftClient mc, Entity target) {
         if (mc.player == null) return false;
 
@@ -36,7 +34,7 @@ public class CombatUtil {
         return toPlayer.dotProduct(targetLook) > 0;
     }
 
-    // 3 block reach check
+    // Fixed reach — edge to edge ~3 blocks
     public static boolean isInReach(MinecraftClient mc, Entity target) {
         if (mc.player == null) return false;
         double dx = mc.player.getX() - target.getX();
@@ -45,13 +43,11 @@ public class CombatUtil {
         return (dx * dx + dy * dy + dz * dz) <= 14.0;
     }
 
-    // Check if item is a sword using 1.21 tag system
     public static boolean isSword(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
         return stack.isIn(ItemTags.SWORDS);
     }
 
-    // Check if item is an axe
     public static boolean isAxe(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
         return stack.getItem() instanceof AxeItem;
