@@ -14,9 +14,15 @@ import java.util.Optional;
 
 public class TriggerBotModule implements ClientModule {
 
+    private final AutoStunModule autoStun;
+
     private boolean enabled = false;
     private long lastProcessedTick = -1L;
     private int cooldownTicks = 0;
+
+    public TriggerBotModule(AutoStunModule autoStun) {
+        this.autoStun = autoStun;
+    }
 
     @Override
     public String getName() { return "TriggerBot"; }
@@ -47,7 +53,6 @@ public class TriggerBotModule implements ClientModule {
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
 
-        // Don't attack while eating or shielding
         if (CombatUtil.isPlayerBusy(mc)) return;
 
         long currentTick = mc.world.getTime();
@@ -64,6 +69,17 @@ public class TriggerBotModule implements ClientModule {
         Entity target = findTarget(mc);
         if (target == null) return;
 
+        // If target is shielding and facing us, trigger AutoStun instead
+        if (target instanceof PlayerEntity pe
+                && pe.isBlocking()
+                && CombatUtil.isFacingUs(mc, target)
+                && !autoStun.isEnabled()) {
+            autoStun.onEnable();
+            cooldownTicks = 10;
+            return;
+        }
+
+        // Normal attack for non-shielding targets
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
@@ -82,10 +98,6 @@ public class TriggerBotModule implements ClientModule {
             if (e.isRemoved()) continue;
             if (e.isSpectator()) continue;
 
-            // Skip shielding players — AutoStun handles those
-            if (e instanceof PlayerEntity pe && pe.isBlocking()) continue;
-
-            // Max 3 block reach
             if (!CombatUtil.isInReach(mc, e)) continue;
 
             Box box = e.getBoundingBox();
