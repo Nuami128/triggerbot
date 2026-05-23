@@ -43,9 +43,8 @@ public class InventoryEatModule extends EmptyModule {
         mc.interactionManager.interactItem(mc.player, hand);
     }
 
-    // After
-private boolean isFood(ItemStack stack) {
+    private boolean isFood(ItemStack stack) {
     if (stack == null || stack.isEmpty()) return false;
-    return stack.isIn(net.minecraft.registry.tag.ItemTags.FOOD);
- }
+    return stack.contains(net.minecraft.component.DataComponentTypes.FOOD);
+    }
 }
