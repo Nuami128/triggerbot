@@ -14,7 +14,7 @@ import java.util.Optional;
 
 public class AutoStunModule implements ClientModule {
 
-    private enum State { IDLE, SWAPPED, SWAPPING_BACK, COOLDOWN }
+    private enum State { IDLE, ATTACKING, SWAPPING_BACK, COOLDOWN }
 
     private boolean enabled = false;
     private State state = State.IDLE;
@@ -43,6 +43,16 @@ public class AutoStunModule implements ClientModule {
         tickCounter = 0;
         cachedTarget = null;
         lastProcessedTick = -1L;
+    }
+
+    // Called when player releases left click
+    public void beginSwapBack() {
+        if (state == State.ATTACKING || state == State.IDLE) {
+            tickCounter = 0;
+            state = State.SWAPPING_BACK;
+        } else if (state != State.SWAPPING_BACK) {
+            onDisable();
+        }
     }
 
     @Override
@@ -86,35 +96,34 @@ public class AutoStunModule implements ClientModule {
                 }
 
                 tickCounter = 0;
-                state = State.SWAPPED;
+                state = State.ATTACKING;
             }
 
-            case SWAPPED -> {
+            case ATTACKING -> {
                 if (tickCounter < 3) return;
 
                 if (cachedTarget == null || !cachedTarget.isAlive() || cachedTarget.isRemoved()) {
-                    tickCounter = 0;
-                    state = State.SWAPPING_BACK;
-                    return;
+                    cachedTarget = findTarget(mc);
+                    if (cachedTarget == null) return;
                 }
+
+                if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f) return;
 
                 mc.interactionManager.attackEntity(mc.player, cachedTarget);
                 mc.player.swingHand(Hand.MAIN_HAND);
-
                 tickCounter = 0;
-                state = State.SWAPPING_BACK;
             }
 
             case SWAPPING_BACK -> {
-                if (tickCounter < 2) return;
-
+                if (tickCounter < 5) return;
                 swapBack(mc);
                 tickCounter = 0;
                 state = State.COOLDOWN;
             }
 
             case COOLDOWN -> {
-                if (tickCounter >= 20) {
+                if (tickCounter >= 10) {
+                    enabled = false;
                     cachedTarget = null;
                     state = State.IDLE;
                 }
