@@ -9,8 +9,15 @@ import net.minecraft.util.Hand;
 
 public class InventoryEatModule extends EmptyModule {
 
+    private boolean pendingEat = false;
+
     public InventoryEatModule() {
         super("Inventory Eat");
+    }
+
+    // Called from mixin when inventory opens
+    public void scheduleEat() {
+        pendingEat = true;
     }
 
     @Override
@@ -19,24 +26,29 @@ public class InventoryEatModule extends EmptyModule {
 
         if (mc.player == null || mc.world == null) return;
         if (mc.interactionManager == null) return;
-        if (!(mc.currentScreen instanceof InventoryScreen)) return;
 
-        // Keep holding the right click while inventory is open and eating
-        if (mc.player.isUsingItem()) {
-            mc.interactionManager.interactItem(mc.player, getEatingHand(mc));
+        // If inventory closed, reset
+        if (!(mc.currentScreen instanceof InventoryScreen)) {
+            pendingEat = false;
+            return;
         }
-    }
 
-    // Called from mixin when inventory screen opens
-    public void tryEat() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.interactionManager == null) return;
         if (mc.player.getHungerManager().getFoodLevel() >= 20) return;
 
         Hand hand = getEatingHand(mc);
         if (hand == null) return;
 
-        mc.interactionManager.interactItem(mc.player, hand);
+        // Fire right click on the tick after inventory opens
+        if (pendingEat) {
+            mc.interactionManager.interactItem(mc.player, hand);
+            pendingEat = false;
+            return;
+        }
+
+        // Keep eating if not finished
+        if (mc.player.isUsingItem()) {
+            mc.interactionManager.interactItem(mc.player, hand);
+        }
     }
 
     private Hand getEatingHand(MinecraftClient mc) {
