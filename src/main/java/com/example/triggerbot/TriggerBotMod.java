@@ -13,6 +13,8 @@ public class TriggerBotMod implements ClientModInitializer {
     private static AutoStunModule AUTO_STUN;
     private static TriggerBotModule TRIGGER;
 
+    private boolean wasClicking = false;
+
     @Override
     public void onInitializeClient() {
         System.out.println("TRIGGERBOT INIT");
@@ -23,18 +25,20 @@ public class TriggerBotMod implements ClientModInitializer {
         MODULE_MANAGER.register(AUTO_STUN);
         MODULE_MANAGER.register(TRIGGER);
 
+        // TriggerBot always enabled
+        TRIGGER.onEnable();
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) return;
 
-            boolean attacking = client.options.attackKey.isPressed();
+            boolean clicking = client.options.attackKey.wasPressed();
 
-            if (attacking) {
-                if (!AUTO_STUN.isEnabled()) AUTO_STUN.onEnable();
-                if (!TRIGGER.isEnabled()) TRIGGER.onEnable();
-            } else {
-                if (AUTO_STUN.isEnabled()) AUTO_STUN.beginSwapBack();
-                if (TRIGGER.isEnabled()) TRIGGER.onDisable();
+            // AutoStun fires once per fresh left click
+            if (clicking) {
+                AUTO_STUN.onEnable();
             }
+
+            wasClicking = clicking;
 
             MODULE_MANAGER.tickAll();
         });
