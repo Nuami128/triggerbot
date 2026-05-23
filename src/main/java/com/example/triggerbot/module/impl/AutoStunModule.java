@@ -102,7 +102,7 @@ public class AutoStunModule implements ClientModule {
             }
 
             case WAITING -> {
-                if (tickCounter < 2) return;
+                if (tickCounter < 1) return;
 
                 // Re-validate — target must still be shielding and facing us
                 if (cachedTarget == null || !cachedTarget.isAlive() || cachedTarget.isRemoved()) {
@@ -131,13 +131,13 @@ public class AutoStunModule implements ClientModule {
             }
 
             case ATTACKING -> {
-                if (tickCounter < 3) return;
+                if (tickCounter < 1) return;
                 tickCounter = 0;
                 state = State.SWAPPING_BACK;
             }
 
             case SWAPPING_BACK -> {
-                if (tickCounter < 5) return;
+                if (tickCounter < 2) return;
 
                 int current = mc.player.getInventory().getSelectedSlot();
                 if (originalSlot != -1 && current != originalSlot) {
