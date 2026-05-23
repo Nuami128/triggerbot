@@ -7,7 +7,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.AxeItem;
-import net.minecraft.item.SwordItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
@@ -87,7 +86,7 @@ public class AutoStunModule implements ClientModule {
 
                 // Only fire if holding sword or axe
                 ItemStack held = mc.player.getMainHandStack();
-                if (!(held.getItem() instanceof SwordItem) && !(held.getItem() instanceof AxeItem)) {
+                if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) {
                     onDisable();
                     return;
                 }
@@ -107,7 +106,7 @@ public class AutoStunModule implements ClientModule {
                 // Only swap if currently holding a sword
                 int currentSlot = mc.player.getInventory().getSelectedSlot();
                 ItemStack currentItem = mc.player.getInventory().getStack(currentSlot);
-                if (!(currentItem.getItem() instanceof SwordItem)) {
+                if (!CombatUtil.isSword(currentItem)) {
                     onDisable();
                     return;
                 }
@@ -141,26 +140,23 @@ public class AutoStunModule implements ClientModule {
             }
 
             case SHIELD_BREAK -> {
-                // Wait to see if shield broke
                 if (tickCounter < 1) return;
 
-                // Check if shield is still up
+                // If shield still up, try again
                 if (cachedTarget instanceof LivingEntity le && le.isBlocking()) {
-                    // Shield still up, try again
                     tickCounter = 0;
                     state = State.WAITING;
                     return;
                 }
 
-                // Shield is down — wait 50ms (1 tick) then stun
+                // Shield down — proceed to stun
                 tickCounter = 0;
                 state = State.STUN_DELAY;
             }
 
             case STUN_DELAY -> {
-                // ~50ms delay after shield break before stun hit
+                // ~50ms delay after shield break
                 if (tickCounter < 1) return;
-
                 tickCounter = 0;
                 state = State.STUN;
             }
