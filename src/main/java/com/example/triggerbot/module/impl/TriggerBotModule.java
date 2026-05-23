@@ -96,15 +96,6 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // Apply downward velocity for crits when airborne
-        if (airborne && velY <= 0) {
-            mc.player.setVelocity(
-                    mc.player.getVelocity().x,
-                    -0.1,
-                    mc.player.getVelocity().z
-            );
-        }
-
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
