@@ -7,6 +7,8 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.AxeItem;
+import net.minecraft.item.SwordItem;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -15,7 +17,7 @@ import java.util.Optional;
 
 public class AutoStunModule implements ClientModule {
 
-    private enum State { IDLE, WAITING, ATTACKING, SWAPPING_BACK, COOLDOWN }
+    private enum State { IDLE, WAITING, SHIELD_BREAK, STUN_DELAY, STUN, SWAPPING_BACK, COOLDOWN }
 
     private boolean enabled = false;
     private State state = State.IDLE;
@@ -47,11 +49,9 @@ public class AutoStunModule implements ClientModule {
     }
 
     public void beginSwapBack() {
-        if (state == State.ATTACKING || state == State.WAITING || state == State.IDLE) {
+        if (state != State.SWAPPING_BACK && state != State.COOLDOWN) {
             tickCounter = 0;
             state = State.SWAPPING_BACK;
-        } else if (state != State.SWAPPING_BACK) {
-            onDisable();
         }
     }
 
@@ -69,8 +69,10 @@ public class AutoStunModule implements ClientModule {
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
 
-        // Don't fire while eating or shielding
         if (CombatUtil.isPlayerBusy(mc)) return;
+
+        // Don't fire while ascending
+        if (mc.player.getVelocity().y > 0) return;
 
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
@@ -83,15 +85,35 @@ public class AutoStunModule implements ClientModule {
             case IDLE -> {
                 if (mc.player.getAttackCooldownProgress(1.0f) < 1.0f) return;
 
-                // Only target players who are actively shielding and facing us
+                // Only fire if holding sword or axe
+                ItemStack held = mc.player.getMainHandStack();
+                if (!(held.getItem() instanceof SwordItem) && !(held.getItem() instanceof AxeItem)) {
+                    onDisable();
+                    return;
+                }
+
                 Entity target = findShieldingTarget(mc);
-                if (target == null) return;
+                if (target == null) {
+                    onDisable();
+                    return;
+                }
 
                 int axeSlot = findAxe(mc);
-                if (axeSlot == -1) return;
+                if (axeSlot == -1) {
+                    onDisable();
+                    return;
+                }
+
+                // Only swap if currently holding a sword
+                int currentSlot = mc.player.getInventory().getSelectedSlot();
+                ItemStack currentItem = mc.player.getInventory().getStack(currentSlot);
+                if (!(currentItem.getItem() instanceof SwordItem)) {
+                    onDisable();
+                    return;
+                }
 
                 cachedTarget = target;
-                originalSlot = mc.player.getInventory().getSelectedSlot();
+                originalSlot = currentSlot;
 
                 if (originalSlot != axeSlot) {
                     mc.player.getInventory().setSelectedSlot(axeSlot);
@@ -104,34 +126,56 @@ public class AutoStunModule implements ClientModule {
             case WAITING -> {
                 if (tickCounter < 1) return;
 
-                // Re-validate — target must still be shielding and facing us
-                if (cachedTarget == null || !cachedTarget.isAlive() || cachedTarget.isRemoved()) {
+                if (!isTargetValid(mc)) {
                     tickCounter = 0;
                     state = State.SWAPPING_BACK;
                     return;
                 }
 
-                if (cachedTarget instanceof LivingEntity le && !CombatUtil.isShielding(le)) {
-                    tickCounter = 0;
-                    state = State.SWAPPING_BACK;
-                    return;
-                }
-
-                if (!CombatUtil.isFacingUs(mc, cachedTarget)) {
-                    tickCounter = 0;
-                    state = State.SWAPPING_BACK;
-                    return;
-                }
-
+                // Shield break hit
                 mc.interactionManager.attackEntity(mc.player, cachedTarget);
                 mc.player.swingHand(Hand.MAIN_HAND);
 
                 tickCounter = 0;
-                state = State.ATTACKING;
+                state = State.SHIELD_BREAK;
             }
 
-            case ATTACKING -> {
+            case SHIELD_BREAK -> {
+                // Wait to see if shield broke
                 if (tickCounter < 1) return;
+
+                // Check if shield is still up
+                if (cachedTarget instanceof LivingEntity le && le.isBlocking()) {
+                    // Shield still up, try again
+                    tickCounter = 0;
+                    state = State.WAITING;
+                    return;
+                }
+
+                // Shield is down — wait 50ms (1 tick) then stun
+                tickCounter = 0;
+                state = State.STUN_DELAY;
+            }
+
+            case STUN_DELAY -> {
+                // ~50ms delay after shield break before stun hit
+                if (tickCounter < 1) return;
+
+                tickCounter = 0;
+                state = State.STUN;
+            }
+
+            case STUN -> {
+                if (!isTargetValid(mc)) {
+                    tickCounter = 0;
+                    state = State.SWAPPING_BACK;
+                    return;
+                }
+
+                // Stun hit with axe
+                mc.interactionManager.attackEntity(mc.player, cachedTarget);
+                mc.player.swingHand(Hand.MAIN_HAND);
+
                 tickCounter = 0;
                 state = State.SWAPPING_BACK;
             }
@@ -150,15 +194,20 @@ public class AutoStunModule implements ClientModule {
 
             case COOLDOWN -> {
                 if (tickCounter >= 10) {
-                    enabled = false;
-                    cachedTarget = null;
-                    state = State.IDLE;
+                    onDisable();
                 }
             }
         }
     }
 
-    // Only returns a target that is shielding AND facing us AND in reach
+    private boolean isTargetValid(MinecraftClient mc) {
+        if (cachedTarget == null) return false;
+        if (!cachedTarget.isAlive()) return false;
+        if (cachedTarget.isRemoved()) return false;
+        if (!CombatUtil.isInReach(mc, cachedTarget)) return false;
+        return true;
+    }
+
     private Entity findShieldingTarget(MinecraftClient mc) {
         Vec3d eyePos = mc.player.getEyePos();
         Vec3d look = mc.player.getRotationVec(1.0f);
@@ -171,13 +220,8 @@ public class AutoStunModule implements ClientModule {
             if (e.isRemoved()) continue;
             if (e.isSpectator()) continue;
 
-            // Must be in reach
             if (!CombatUtil.isInReach(mc, e)) continue;
-
-            // Must be actively shielding
             if (!pe.isBlocking()) continue;
-
-            // Must be facing us (shield facing toward us)
             if (!CombatUtil.isFacingUs(mc, e)) continue;
 
             Box box = e.getBoundingBox();
