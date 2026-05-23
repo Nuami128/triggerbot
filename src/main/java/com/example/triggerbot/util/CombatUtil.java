@@ -42,7 +42,7 @@ public class CombatUtil {
         double dx = mc.player.getX() - target.getX();
         double dy = mc.player.getY() - target.getY();
         double dz = mc.player.getZ() - target.getZ();
-        return (dx * dx + dy * dy + dz * dz) <= 9.0;
+        return (dx * dx + dy * dy + dz * dz) <= 14.0;
     }
 
     // Check if item is a sword using 1.21 tag system
