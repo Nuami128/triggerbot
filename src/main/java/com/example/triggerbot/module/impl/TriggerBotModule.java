@@ -63,14 +63,17 @@ public class TriggerBotModule implements ClientModule {
         double velY = mc.player.getVelocity().y;
         boolean onGround = mc.player.isOnGround();
         boolean ascending = velY > 0;
+        boolean falling = velY < 0;
         boolean airborne = !onGround;
         boolean sprinting = mc.player.isSprinting();
 
-        // Don't attack while ascending
+        // Never attack while ascending
         if (ascending) return;
 
-        // Must be sprinting on ground, OR airborne for crits
+        // On ground: must be sprinting
+        // Airborne: must be falling (for crits)
         if (onGround && !sprinting) return;
+        if (airborne && !falling) return;
 
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
@@ -81,7 +84,9 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
+        // Full cooldown for crits, 85% for ground attacks
+        float cooldownThreshold = airborne ? 1.0f : 0.85f;
+        if (mc.player.getAttackCooldownProgress(1.0f) < cooldownThreshold) return;
 
         Entity target = findTarget(mc);
         if (target == null) return;
