@@ -3,6 +3,9 @@ package com.example.triggerbot.util;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.util.math.Vec3d;
 
 public class CombatUtil {
@@ -40,5 +43,17 @@ public class CombatUtil {
         double dy = mc.player.getY() - target.getY();
         double dz = mc.player.getZ() - target.getZ();
         return (dx * dx + dy * dy + dz * dz) <= 9.0;
+    }
+
+    // Check if item is a sword using 1.21 tag system
+    public static boolean isSword(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        return stack.isIn(ItemTags.SWORDS);
+    }
+
+    // Check if item is an axe
+    public static boolean isAxe(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        return stack.getItem() instanceof AxeItem;
     }
 }
