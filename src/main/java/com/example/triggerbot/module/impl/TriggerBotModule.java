@@ -5,6 +5,7 @@ import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -81,11 +82,11 @@ public class TriggerBotModule implements ClientModule {
             if (e.isRemoved()) continue;
             if (e.isSpectator()) continue;
 
-            // Reach check
-            if (!CombatUtil.isInReach(mc, e)) continue;
+            // Skip shielding players — AutoStun handles those
+            if (e instanceof PlayerEntity pe && pe.isBlocking()) continue;
 
-            // Don't attack shielding players — AutoStun handles those
-            if (e instanceof net.minecraft.entity.player.PlayerEntity pe && pe.isBlocking()) continue;
+            // Max 3 block reach
+            if (!CombatUtil.isInReach(mc, e)) continue;
 
             Box box = e.getBoundingBox();
             Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
