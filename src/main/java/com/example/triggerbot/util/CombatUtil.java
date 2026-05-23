@@ -6,6 +6,7 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.AxeItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.tag.ItemTags;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
 public class CombatUtil {
@@ -33,13 +34,23 @@ public class CombatUtil {
         return toPlayer.dotProduct(targetLook) > 0;
     }
 
-    // Fixed reach — edge to edge ~3 blocks
+    // Bounding box reach — measures to the actual edge of the entity box
     public static boolean isInReach(MinecraftClient mc, Entity target) {
         if (mc.player == null) return false;
-        double dx = mc.player.getX() - target.getX();
-        double dy = mc.player.getY() - target.getY();
-        double dz = mc.player.getZ() - target.getZ();
-        return (dx * dx + dy * dy + dz * dz) <= 14.0;
+
+        Vec3d eyePos = mc.player.getEyePos();
+        Box box = target.getBoundingBox();
+
+        // Clamp eye position to the nearest point on the bounding box
+        double closestX = Math.max(box.minX, Math.min(eyePos.x, box.maxX));
+        double closestY = Math.max(box.minY, Math.min(eyePos.y, box.maxY));
+        double closestZ = Math.max(box.minZ, Math.min(eyePos.z, box.maxZ));
+
+        double dx = eyePos.x - closestX;
+        double dy = eyePos.y - closestY;
+        double dz = eyePos.z - closestZ;
+
+        return (dx * dx + dy * dy + dz * dz) <= 14.0; // exactly 3.0 blocks to box edge
     }
 
     public static boolean isSword(ItemStack stack) {
