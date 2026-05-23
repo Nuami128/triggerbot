@@ -6,6 +6,9 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.SwordItem;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -55,6 +58,24 @@ public class TriggerBotModule implements ClientModule {
 
         if (CombatUtil.isPlayerBusy(mc)) return;
 
+        // Only fire with sword or axe
+        ItemStack held = mc.player.getMainHandStack();
+        boolean hasSword = held.getItem() instanceof SwordItem;
+        boolean hasAxe = held.getItem() instanceof AxeItem;
+        if (!hasSword && !hasAxe) return;
+
+        double velY = mc.player.getVelocity().y;
+        boolean onGround = mc.player.isOnGround();
+        boolean ascending = velY > 0;
+        boolean airborne = !onGround;
+        boolean sprinting = mc.player.isSprinting();
+
+        // Don't attack while ascending
+        if (ascending) return;
+
+        // Must be sprinting on ground, OR airborne for crits
+        if (onGround && !sprinting) return;
+
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
         lastProcessedTick = currentTick;
@@ -69,7 +90,7 @@ public class TriggerBotModule implements ClientModule {
         Entity target = findTarget(mc);
         if (target == null) return;
 
-        // If target is shielding and facing us, trigger AutoStun instead
+        // Trigger AutoStun if target is shielding and facing us
         if (target instanceof PlayerEntity pe
                 && pe.isBlocking()
                 && CombatUtil.isFacingUs(mc, target)
@@ -79,7 +100,15 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // Normal attack for non-shielding targets
+        // Apply downward velocity for crits when airborne
+        if (airborne && velY <= 0) {
+            mc.player.setVelocity(
+                    mc.player.getVelocity().x,
+                    -0.1,
+                    mc.player.getVelocity().z
+            );
+        }
+
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
