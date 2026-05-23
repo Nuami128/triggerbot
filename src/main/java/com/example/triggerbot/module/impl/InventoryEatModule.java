@@ -4,7 +4,6 @@ import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.FoodComponent;
 import net.minecraft.util.Hand;
 
 public class InventoryEatModule extends EmptyModule {
@@ -44,8 +43,9 @@ public class InventoryEatModule extends EmptyModule {
         mc.interactionManager.interactItem(mc.player, hand);
     }
 
-    private boolean isFood(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) return false;
-        return stack.getItem().getFoodComponent() != null;
-    }
+    // After
+private boolean isFood(ItemStack stack) {
+    if (stack == null || stack.isEmpty()) return false;
+    return stack.isIn(net.minecraft.registry.tag.ItemTags.FOOD);
+ }
 }
