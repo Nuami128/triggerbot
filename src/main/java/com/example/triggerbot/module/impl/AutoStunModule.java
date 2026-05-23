@@ -5,7 +5,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.AxeItem;
-import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -14,7 +13,7 @@ import java.util.Optional;
 
 public class AutoStunModule implements ClientModule {
 
-    private enum State { IDLE, ATTACKING, SWAPPING_BACK, COOLDOWN }
+    private enum State { IDLE, WAITING, ATTACKING, SWAPPING_BACK, COOLDOWN }
 
     private boolean enabled = false;
     private State state = State.IDLE;
@@ -45,9 +44,8 @@ public class AutoStunModule implements ClientModule {
         lastProcessedTick = -1L;
     }
 
-    // Called when player releases left click
     public void beginSwapBack() {
-        if (state == State.ATTACKING || state == State.IDLE) {
+        if (state == State.ATTACKING || state == State.WAITING || state == State.IDLE) {
             tickCounter = 0;
             state = State.SWAPPING_BACK;
         } else if (state != State.SWAPPING_BACK) {
@@ -78,7 +76,7 @@ public class AutoStunModule implements ClientModule {
         switch (state) {
 
             case IDLE -> {
-                if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f) return;
+                if (mc.player.getAttackCooldownProgress(1.0f) < 1.0f) return;
 
                 cachedTarget = findTarget(mc);
                 if (cachedTarget == null) return;
@@ -88,35 +86,49 @@ public class AutoStunModule implements ClientModule {
 
                 originalSlot = mc.player.getInventory().getSelectedSlot();
 
+                // Only switch if needed — no manual packet, let vanilla sync
                 if (originalSlot != axeSlot) {
                     mc.player.getInventory().setSelectedSlot(axeSlot);
-                    mc.getNetworkHandler().sendPacket(
-                            new UpdateSelectedSlotC2SPacket(axeSlot)
-                    );
                 }
+
+                tickCounter = 0;
+                state = State.WAITING;
+            }
+
+            case WAITING -> {
+                // Wait 2 ticks for server to see slot change
+                if (tickCounter < 2) return;
+
+                if (cachedTarget == null || !cachedTarget.isAlive() || cachedTarget.isRemoved()) {
+                    tickCounter = 0;
+                    state = State.SWAPPING_BACK;
+                    return;
+                }
+
+                // Attack once
+                mc.interactionManager.attackEntity(mc.player, cachedTarget);
+                mc.player.swingHand(Hand.MAIN_HAND);
 
                 tickCounter = 0;
                 state = State.ATTACKING;
             }
 
             case ATTACKING -> {
+                // Stay on axe visibly for a few ticks after attack
                 if (tickCounter < 3) return;
-
-                if (cachedTarget == null || !cachedTarget.isAlive() || cachedTarget.isRemoved()) {
-                    cachedTarget = findTarget(mc);
-                    if (cachedTarget == null) return;
-                }
-
-                if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f) return;
-
-                mc.interactionManager.attackEntity(mc.player, cachedTarget);
-                mc.player.swingHand(Hand.MAIN_HAND);
                 tickCounter = 0;
+                state = State.SWAPPING_BACK;
             }
 
             case SWAPPING_BACK -> {
                 if (tickCounter < 5) return;
-                swapBack(mc);
+
+                // Swap back — no manual packet
+                int current = mc.player.getInventory().getSelectedSlot();
+                if (originalSlot != -1 && current != originalSlot) {
+                    mc.player.getInventory().setSelectedSlot(originalSlot);
+                }
+
                 tickCounter = 0;
                 state = State.COOLDOWN;
             }
@@ -128,16 +140,6 @@ public class AutoStunModule implements ClientModule {
                     state = State.IDLE;
                 }
             }
-        }
-    }
-
-    private void swapBack(MinecraftClient mc) {
-        int current = mc.player.getInventory().getSelectedSlot();
-        if (originalSlot != -1 && current != originalSlot) {
-            mc.player.getInventory().setSelectedSlot(originalSlot);
-            mc.getNetworkHandler().sendPacket(
-                    new UpdateSelectedSlotC2SPacket(originalSlot)
-            );
         }
     }
 
