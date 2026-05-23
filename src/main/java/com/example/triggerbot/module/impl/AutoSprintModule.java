@@ -26,6 +26,8 @@ public class AutoSprintModule extends EmptyModule {
         // Don't sprint if in water or on ladder etc
         if (mc.player.isTouchingWater()) return;
 
-        mc.player.setSprinting(true);
+        if (!mc.player.isSprinting()) {
+    mc.player.setSprinting(true);
+        }
     }
 }
