@@ -20,6 +20,7 @@ public class TriggerBotModule implements ClientModule {
     private boolean enabled = false;
     private long lastProcessedTick = -1L;
     private int cooldownTicks = 0;
+    private int releaseDelay = 0;
 
     public TriggerBotModule(AutoStunModule autoStun) {
         this.autoStun = autoStun;
@@ -37,6 +38,7 @@ public class TriggerBotModule implements ClientModule {
     public void onDisable() {
         enabled = false;
         cooldownTicks = 0;
+        releaseDelay = 0;
         lastProcessedTick = -1L;
     }
 
@@ -54,7 +56,17 @@ public class TriggerBotModule implements ClientModule {
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
 
-        if (CombatUtil.isPlayerBusy(mc)) return;
+        // If using item, reset release delay and skip
+        if (CombatUtil.isPlayerBusy(mc)) {
+            releaseDelay = 2;
+            return;
+        }
+
+        // Wait 2 ticks after releasing item before attacking
+        if (releaseDelay > 0) {
+            releaseDelay--;
+            return;
+        }
 
         // Only fire with sword or axe
         ItemStack held = mc.player.getMainHandStack();
@@ -71,7 +83,7 @@ public class TriggerBotModule implements ClientModule {
         if (ascending) return;
 
         // On ground: must be sprinting
-        // Airborne: must be falling (for crits)
+        // Airborne: must be falling for crits
         if (onGround && !sprinting) return;
         if (airborne && !falling) return;
 
