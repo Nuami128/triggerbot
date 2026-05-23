@@ -1,6 +1,7 @@
 package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.ClientModule;
+import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -45,7 +46,9 @@ public class TriggerBotModule implements ClientModule {
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
 
-        // Only run once per world tick
+        // Don't attack while eating or shielding
+        if (CombatUtil.isPlayerBusy(mc)) return;
+
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
         lastProcessedTick = currentTick;
@@ -55,7 +58,6 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // Only attack when fully charged
         if (mc.player.getAttackCooldownProgress(1.0f) < 1.0f) return;
 
         Entity target = findTarget(mc);
@@ -64,7 +66,6 @@ public class TriggerBotModule implements ClientModule {
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
-        // 10 tick cooldown between attacks (~500ms)
         cooldownTicks = 10;
     }
 
@@ -79,6 +80,12 @@ public class TriggerBotModule implements ClientModule {
             if (!e.isAlive()) continue;
             if (e.isRemoved()) continue;
             if (e.isSpectator()) continue;
+
+            // Reach check
+            if (!CombatUtil.isInReach(mc, e)) continue;
+
+            // Don't attack shielding players — AutoStun handles those
+            if (e instanceof net.minecraft.entity.player.PlayerEntity pe && pe.isBlocking()) continue;
 
             Box box = e.getBoundingBox();
             Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
