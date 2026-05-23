@@ -1,9 +1,11 @@
 package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.ClientModule;
+import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.AxeItem;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
@@ -67,6 +69,9 @@ public class AutoStunModule implements ClientModule {
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
 
+        // Don't fire while eating or shielding
+        if (CombatUtil.isPlayerBusy(mc)) return;
+
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
         lastProcessedTick = currentTick;
@@ -78,15 +83,16 @@ public class AutoStunModule implements ClientModule {
             case IDLE -> {
                 if (mc.player.getAttackCooldownProgress(1.0f) < 1.0f) return;
 
-                cachedTarget = findTarget(mc);
-                if (cachedTarget == null) return;
+                // Only target players who are actively shielding and facing us
+                Entity target = findShieldingTarget(mc);
+                if (target == null) return;
 
                 int axeSlot = findAxe(mc);
                 if (axeSlot == -1) return;
 
+                cachedTarget = target;
                 originalSlot = mc.player.getInventory().getSelectedSlot();
 
-                // Only switch if needed — no manual packet, let vanilla sync
                 if (originalSlot != axeSlot) {
                     mc.player.getInventory().setSelectedSlot(axeSlot);
                 }
@@ -96,16 +102,27 @@ public class AutoStunModule implements ClientModule {
             }
 
             case WAITING -> {
-                // Wait 2 ticks for server to see slot change
                 if (tickCounter < 2) return;
 
+                // Re-validate — target must still be shielding and facing us
                 if (cachedTarget == null || !cachedTarget.isAlive() || cachedTarget.isRemoved()) {
                     tickCounter = 0;
                     state = State.SWAPPING_BACK;
                     return;
                 }
 
-                // Attack once
+                if (cachedTarget instanceof LivingEntity le && !CombatUtil.isShielding(le)) {
+                    tickCounter = 0;
+                    state = State.SWAPPING_BACK;
+                    return;
+                }
+
+                if (!CombatUtil.isFacingUs(mc, cachedTarget)) {
+                    tickCounter = 0;
+                    state = State.SWAPPING_BACK;
+                    return;
+                }
+
                 mc.interactionManager.attackEntity(mc.player, cachedTarget);
                 mc.player.swingHand(Hand.MAIN_HAND);
 
@@ -114,7 +131,6 @@ public class AutoStunModule implements ClientModule {
             }
 
             case ATTACKING -> {
-                // Stay on axe visibly for a few ticks after attack
                 if (tickCounter < 3) return;
                 tickCounter = 0;
                 state = State.SWAPPING_BACK;
@@ -123,7 +139,6 @@ public class AutoStunModule implements ClientModule {
             case SWAPPING_BACK -> {
                 if (tickCounter < 5) return;
 
-                // Swap back — no manual packet
                 int current = mc.player.getInventory().getSelectedSlot();
                 if (originalSlot != -1 && current != originalSlot) {
                     mc.player.getInventory().setSelectedSlot(originalSlot);
@@ -143,17 +158,27 @@ public class AutoStunModule implements ClientModule {
         }
     }
 
-    private Entity findTarget(MinecraftClient mc) {
+    // Only returns a target that is shielding AND facing us AND in reach
+    private Entity findShieldingTarget(MinecraftClient mc) {
         Vec3d eyePos = mc.player.getEyePos();
         Vec3d look = mc.player.getRotationVec(1.0f);
         Vec3d reachVec = eyePos.add(look.multiply(3.0));
 
         for (Entity e : mc.world.getEntities()) {
-            if (!(e instanceof LivingEntity)) continue;
+            if (!(e instanceof PlayerEntity pe)) continue;
             if (e == mc.player) continue;
             if (!e.isAlive()) continue;
             if (e.isRemoved()) continue;
             if (e.isSpectator()) continue;
+
+            // Must be in reach
+            if (!CombatUtil.isInReach(mc, e)) continue;
+
+            // Must be actively shielding
+            if (!pe.isBlocking()) continue;
+
+            // Must be facing us (shield facing toward us)
+            if (!CombatUtil.isFacingUs(mc, e)) continue;
 
             Box box = e.getBoundingBox();
             Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
