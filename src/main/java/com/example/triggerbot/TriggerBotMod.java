@@ -21,13 +21,15 @@ public class TriggerBotMod implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) return;
 
-            if (client.options.attackKey.isPressed()) {
+            boolean attacking = client.options.attackKey.isPressed();
+
+            if (attacking) {
                 if (!AUTO_STUN.isEnabled()) {
                     AUTO_STUN.onEnable();
                 }
             } else {
                 if (AUTO_STUN.isEnabled()) {
-                    AUTO_STUN.onDisable();
+                    AUTO_STUN.beginSwapBack();
                 }
             }
 
