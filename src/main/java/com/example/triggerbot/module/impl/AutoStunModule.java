@@ -141,15 +141,7 @@ public class AutoStunModule implements ClientModule {
 
             case SHIELD_BREAK -> {
                 if (tickCounter < 1) return;
-
-                // If shield still up, try again
-                if (cachedTarget instanceof LivingEntity le && le.isBlocking()) {
-                    tickCounter = 0;
-                    state = State.WAITING;
-                    return;
-                }
-
-                // Shield down — proceed to stun
+                // Always proceed to stun — client-side shield state lags
                 tickCounter = 0;
                 state = State.STUN_DELAY;
             }
