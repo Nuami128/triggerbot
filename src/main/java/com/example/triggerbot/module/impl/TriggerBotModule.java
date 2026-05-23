@@ -6,8 +6,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.AxeItem;
-import net.minecraft.item.SwordItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
@@ -60,9 +58,7 @@ public class TriggerBotModule implements ClientModule {
 
         // Only fire with sword or axe
         ItemStack held = mc.player.getMainHandStack();
-        boolean hasSword = held.getItem() instanceof SwordItem;
-        boolean hasAxe = held.getItem() instanceof AxeItem;
-        if (!hasSword && !hasAxe) return;
+        if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) return;
 
         double velY = mc.player.getVelocity().y;
         boolean onGround = mc.player.isOnGround();
