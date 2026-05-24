@@ -55,20 +55,11 @@ public class TriggerBotModule implements ClientModule {
     }
 
     @Override
-    public void onPostMovement() {}
-
-    @Override
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
+        if (!enabled || mc.player == null) return;
 
-        if (!enabled) return;
-        if (mc.player == null || mc.world == null) return;
-        if (mc.currentScreen != null) return;
-        if (mc.player.isDead()) return;
-        if (mc.interactionManager == null) return;
-        if (mc.getNetworkHandler() == null) return;
-
-        // Health tracking
+        // Health tracking only
         float currentHealth = mc.player.getHealth();
         if (lastHealth > 0 && currentHealth < lastHealth) {
             recentlyHit = true;
@@ -78,6 +69,18 @@ public class TriggerBotModule implements ClientModule {
 
         if (hitCooldown > 0) hitCooldown--;
         if (hitCooldown == 0) recentlyHit = false;
+    }
+
+    @Override
+    public void onPostMovement() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        if (!enabled) return;
+        if (mc.player == null || mc.world == null) return;
+        if (mc.currentScreen != null) return;
+        if (mc.player.isDead()) return;
+        if (mc.interactionManager == null) return;
+        if (mc.getNetworkHandler() == null) return;
 
         if (CombatUtil.isPlayerBusy(mc)) {
             releaseDelay = 2;
@@ -117,7 +120,6 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // Cooldown threshold
         float cooldownThreshold;
         if (airborne && falling) {
             cooldownThreshold = 1.0f;
@@ -132,7 +134,6 @@ public class TriggerBotModule implements ClientModule {
         Entity target = findTarget(mc);
         if (target == null) return;
 
-        // Trigger AutoStun if shielding
         if (target instanceof PlayerEntity pe
                 && pe.isBlocking()
                 && CombatUtil.isFacingUs(mc, target)
@@ -145,7 +146,7 @@ public class TriggerBotModule implements ClientModule {
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
-        // Sprint reset after hit — AutoSprint restores it on next postMovement
+        // Sprint reset after hit — AutoSprint resprints next postMovement
         mc.player.setSprinting(false);
 
         cooldownTicks = 1;
