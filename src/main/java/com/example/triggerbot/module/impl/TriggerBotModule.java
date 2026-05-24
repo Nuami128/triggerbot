@@ -68,7 +68,7 @@ public class TriggerBotModule implements ClientModule {
         float currentHealth = mc.player.getHealth();
         if (lastHealth > 0 && currentHealth < lastHealth) {
             recentlyHit = true;
-            hitCooldown = 12; // remember hit for 12 ticks
+            hitCooldown = 12;
         }
         lastHealth = currentHealth;
 
@@ -110,14 +110,15 @@ public class TriggerBotModule implements ClientModule {
         boolean airborne = !onGround;
         boolean sprinting = mc.player.isSprinting();
 
-        // Horizontal movement check — prevents sweep attacks
-        boolean hasMovement = (velX * velX + velZ * velZ) > 0.05;
+        // Horizontal movement — low threshold to block stationary sweep only
+        boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
 
         // Never attack while ascending
         if (ascending) return;
 
-        // On ground: must be sprinting AND moving to prevent sweep
-        if (onGround && (!sprinting || !hasMovement)) return;
+        // On ground: must be sprinting AND moving
+        if (onGround && !sprinting) return;
+        if (onGround && !hasMovement) return;
 
         // Airborne: must be falling for crits
         if (airborne && !falling) return;
@@ -132,27 +133,23 @@ public class TriggerBotModule implements ClientModule {
         }
 
         // Sprint reset for crits — stop sprint 1 tick before attacking when airborne
-        // This ensures crit knockback registers properly
         if (airborne && falling && sprinting) {
             if (!sprintResetPending) {
                 mc.player.setSprinting(false);
                 sprintResetPending = true;
-                return; // Wait 1 tick
+                return;
             }
         }
         sprintResetPending = false;
 
-        // Cooldown threshold:
-        // - Crits: 100%
-        // - Recently hit (punish/combo): 60% — fire back faster
-        // - Ground sprint hits: 85%
+        // Cooldown threshold
         float cooldownThreshold;
         if (airborne && falling) {
-            cooldownThreshold = 1.0f; // full charge for crits
+            cooldownThreshold = 1.0f;
         } else if (recentlyHit) {
-            cooldownThreshold = 0.60f; // hit back fast when comboed
+            cooldownThreshold = 0.60f;
         } else {
-            cooldownThreshold = 0.85f; // normal sprint hits
+            cooldownThreshold = 0.85f;
         }
 
         if (mc.player.getAttackCooldownProgress(1.0f) < cooldownThreshold) return;
