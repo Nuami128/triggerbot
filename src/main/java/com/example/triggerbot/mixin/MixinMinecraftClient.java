@@ -1,11 +1,11 @@
 package com.example.triggerbot.mixin;
 
-import com.example.triggerbot.module.ModuleManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.util.Hand;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,12 +15,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(MinecraftClient.class)
 public class MixinMinecraftClient {
 
-    @Inject(method = "setScreen", at = @At("TAIL"))
+    @Inject(method = "setScreen", at = @At("HEAD"))
     private void onSetScreen(Screen screen, CallbackInfo ci) {
         if (!(screen instanceof InventoryScreen)) return;
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.interactionManager == null) return;
+        if (mc.player == null || mc.getNetworkHandler() == null) return;
         if (mc.player.getHungerManager().getFoodLevel() >= 20) return;
 
         Hand hand = null;
@@ -35,6 +35,14 @@ public class MixinMinecraftClient {
 
         if (hand == null) return;
 
-        mc.interactionManager.interactItem(mc.player, hand);
+        // Send raw interact packet before inventory opens
+        mc.getNetworkHandler().sendPacket(
+            new PlayerInteractItemC2SPacket(
+                hand,
+                mc.player.age,
+                mc.player.getYaw(),
+                mc.player.getPitch()
+            )
+        );
     }
 }
