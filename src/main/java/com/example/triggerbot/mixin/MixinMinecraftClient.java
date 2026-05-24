@@ -39,11 +39,9 @@ public class MixinMinecraftClient {
 
         if (hand == null) return;
 
-        // Get sequence from network handler and send raw packet
-        int sequence = mc.getNetworkHandler().getSequence().get();
         mc.getNetworkHandler().sendPacket(
-            new PlayerInteractItemC2SPacket(hand, sequence, mc.player.getYaw(), mc.player.getPitch())
-        );
+    new PlayerInteractItemC2SPacket(hand, 0, mc.player.getYaw(), mc.player.getPitch())
+);
         mc.player.swingHand(hand);
     }
 }
