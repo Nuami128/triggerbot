@@ -27,6 +27,10 @@ public class TriggerBotModule implements ClientModule {
     private boolean recentlyHit = false;
     private int hitCooldown = 0;
 
+    // Crit tracking
+    private boolean wasAirborne = false;
+    private double lastVelY = 0;
+
     public TriggerBotModule(AutoStunModule autoStun) {
         this.autoStun = autoStun;
     }
@@ -42,6 +46,8 @@ public class TriggerBotModule implements ClientModule {
         lastHealth = -1f;
         recentlyHit = false;
         hitCooldown = 0;
+        wasAirborne = false;
+        lastVelY = 0;
     }
 
     @Override
@@ -52,6 +58,8 @@ public class TriggerBotModule implements ClientModule {
         lastProcessedTick = -1L;
         recentlyHit = false;
         hitCooldown = 0;
+        wasAirborne = false;
+        lastVelY = 0;
     }
 
     @Override
@@ -59,7 +67,6 @@ public class TriggerBotModule implements ClientModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (!enabled || mc.player == null) return;
 
-        // Health tracking only
         float currentHealth = mc.player.getHealth();
         if (lastHealth > 0 && currentHealth < lastHealth) {
             recentlyHit = true;
@@ -84,6 +91,8 @@ public class TriggerBotModule implements ClientModule {
 
         if (CombatUtil.isPlayerBusy(mc)) {
             releaseDelay = 2;
+            wasAirborne = false;
+            lastVelY = 0;
             return;
         }
 
@@ -100,11 +109,18 @@ public class TriggerBotModule implements ClientModule {
         double velZ = mc.player.getVelocity().z;
         boolean onGround = mc.player.isOnGround();
         boolean ascending = velY > 0;
-        boolean falling = velY < 0;
         boolean airborne = !onGround;
         boolean sprinting = mc.player.isSprinting();
 
         boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
+
+        // Crit = airborne AND velocity at -0.1 or below
+        // Also check last tick for consistency
+        boolean falling = (velY <= -0.1) || (wasAirborne && lastVelY <= -0.1);
+
+        // Update tracking
+        wasAirborne = airborne;
+        lastVelY = velY;
 
         if (ascending) return;
         if (onGround && !sprinting) return;
@@ -120,14 +136,8 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        float cooldownThreshold;
-        if (airborne && falling) {
-            cooldownThreshold = 1.0f;
-        } else if (recentlyHit) {
-            cooldownThreshold = 0.60f;
-        } else {
-            cooldownThreshold = 0.85f;
-        }
+        // 0.85 for everything — crits, sprint hits, punish hits
+        float cooldownThreshold = recentlyHit ? 0.60f : 0.85f;
 
         if (mc.player.getAttackCooldownProgress(1.0f) < cooldownThreshold) return;
 
@@ -146,7 +156,7 @@ public class TriggerBotModule implements ClientModule {
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
-        // Sprint reset after hit — AutoSprint resprints next postMovement
+        // Sprint reset after hit
         mc.player.setSprinting(false);
 
         cooldownTicks = 1;
