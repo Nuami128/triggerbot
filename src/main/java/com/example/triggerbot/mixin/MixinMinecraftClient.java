@@ -5,6 +5,9 @@ import com.example.triggerbot.module.impl.InventoryEatModule;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.Hand;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,10 +23,27 @@ public class MixinMinecraftClient {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.interactionManager == null) return;
 
-        ModuleManager.getInstance().find("Inventory Eat").ifPresent(m -> {
-            if (m instanceof InventoryEatModule iem) {
-                iem.scheduleEat();
-            }
-        });
+        // Check module is enabled
+        var module = ModuleManager.getInstance().find("Inventory Eat");
+        if (module.isEmpty()) return;
+        if (!module.get().isEnabled()) return;
+
+        if (mc.player.getHungerManager().getFoodLevel() >= 20) return;
+
+        // Find food hand
+        Hand hand = null;
+        ItemStack offhand = mc.player.getOffHandStack();
+        ItemStack mainhand = mc.player.getMainHandStack();
+
+        if (!offhand.isEmpty() && offhand.contains(DataComponentTypes.FOOD)) {
+            hand = Hand.OFF_HAND;
+        } else if (!mainhand.isEmpty() && mainhand.contains(DataComponentTypes.FOOD)) {
+            hand = Hand.MAIN_HAND;
+        }
+
+        if (hand == null) return;
+
+        // Send interact packet in same tick as inventory open
+        mc.interactionManager.interactItem(mc.player, hand);
     }
 }
