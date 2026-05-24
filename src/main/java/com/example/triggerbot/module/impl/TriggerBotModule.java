@@ -55,10 +55,20 @@ public class TriggerBotModule implements ClientModule {
     }
 
     @Override
+    public void onPostMovement() {}
+
+    @Override
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (!enabled || mc.player == null) return;
 
+        if (!enabled) return;
+        if (mc.player == null || mc.world == null) return;
+        if (mc.currentScreen != null) return;
+        if (mc.player.isDead()) return;
+        if (mc.interactionManager == null) return;
+        if (mc.getNetworkHandler() == null) return;
+
+        // Health tracking
         float currentHealth = mc.player.getHealth();
         if (lastHealth > 0 && currentHealth < lastHealth) {
             recentlyHit = true;
@@ -68,18 +78,6 @@ public class TriggerBotModule implements ClientModule {
 
         if (hitCooldown > 0) hitCooldown--;
         if (hitCooldown == 0) recentlyHit = false;
-    }
-
-    @Override
-    public void onPostMovement() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-
-        if (!enabled) return;
-        if (mc.player == null || mc.world == null) return;
-        if (mc.currentScreen != null) return;
-        if (mc.player.isDead()) return;
-        if (mc.interactionManager == null) return;
-        if (mc.getNetworkHandler() == null) return;
 
         if (CombatUtil.isPlayerBusy(mc)) {
             releaseDelay = 2;
@@ -101,10 +99,12 @@ public class TriggerBotModule implements ClientModule {
         boolean ascending = velY > 0;
         boolean falling = velY < 0;
         boolean airborne = !onGround;
+        boolean sprinting = mc.player.isSprinting();
 
         boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
 
         if (ascending) return;
+        if (onGround && !sprinting) return;
         if (onGround && !hasMovement) return;
         if (airborne && !falling) return;
 
@@ -145,7 +145,7 @@ public class TriggerBotModule implements ClientModule {
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
-        // Sprint reset AFTER hit — stop sprint, SprintUtil resprints next tick
+        // Sprint reset after hit — AutoSprint restores it on next postMovement
         mc.player.setSprinting(false);
 
         cooldownTicks = 1;
