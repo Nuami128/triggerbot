@@ -22,6 +22,14 @@ public class TriggerBotModule implements ClientModule {
     private int cooldownTicks = 0;
     private int releaseDelay = 0;
 
+    // Damage tracking for punish crits
+    private float lastHealth = -1f;
+    private boolean recentlyHit = false;
+    private int hitCooldown = 0;
+
+    // Sprint reset state
+    private boolean sprintResetPending = false;
+
     public TriggerBotModule(AutoStunModule autoStun) {
         this.autoStun = autoStun;
     }
@@ -32,7 +40,13 @@ public class TriggerBotModule implements ClientModule {
     public boolean isEnabled() { return enabled; }
 
     @Override
-    public void onEnable() { enabled = true; }
+    public void onEnable() {
+        enabled = true;
+        lastHealth = -1f;
+        recentlyHit = false;
+        hitCooldown = 0;
+        sprintResetPending = false;
+    }
 
     @Override
     public void onDisable() {
@@ -40,10 +54,27 @@ public class TriggerBotModule implements ClientModule {
         cooldownTicks = 0;
         releaseDelay = 0;
         lastProcessedTick = -1L;
+        recentlyHit = false;
+        hitCooldown = 0;
+        sprintResetPending = false;
     }
 
     @Override
-    public void onTick() {}
+    public void onTick() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (!enabled || mc.player == null) return;
+
+        // Track health to detect when we take damage
+        float currentHealth = mc.player.getHealth();
+        if (lastHealth > 0 && currentHealth < lastHealth) {
+            recentlyHit = true;
+            hitCooldown = 12; // remember hit for 12 ticks
+        }
+        lastHealth = currentHealth;
+
+        if (hitCooldown > 0) hitCooldown--;
+        if (hitCooldown == 0) recentlyHit = false;
+    }
 
     @Override
     public void onPostMovement() {
@@ -56,13 +87,11 @@ public class TriggerBotModule implements ClientModule {
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
 
-        // If using item, reset release delay and skip
         if (CombatUtil.isPlayerBusy(mc)) {
             releaseDelay = 2;
             return;
         }
 
-        // Wait 2 ticks after releasing item before attacking
         if (releaseDelay > 0) {
             releaseDelay--;
             return;
@@ -73,18 +102,24 @@ public class TriggerBotModule implements ClientModule {
         if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) return;
 
         double velY = mc.player.getVelocity().y;
+        double velX = mc.player.getVelocity().x;
+        double velZ = mc.player.getVelocity().z;
         boolean onGround = mc.player.isOnGround();
         boolean ascending = velY > 0;
         boolean falling = velY < 0;
         boolean airborne = !onGround;
         boolean sprinting = mc.player.isSprinting();
 
+        // Horizontal movement check — prevents sweep attacks
+        boolean hasMovement = (velX * velX + velZ * velZ) > 0.05;
+
         // Never attack while ascending
         if (ascending) return;
 
-        // On ground: must be sprinting
+        // On ground: must be sprinting AND moving to prevent sweep
+        if (onGround && (!sprinting || !hasMovement)) return;
+
         // Airborne: must be falling for crits
-        if (onGround && !sprinting) return;
         if (airborne && !falling) return;
 
         long currentTick = mc.world.getTime();
@@ -96,8 +131,30 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // Full cooldown for crits, 85% for ground attacks
-        float cooldownThreshold = airborne ? 1.0f : 0.85f;
+        // Sprint reset for crits — stop sprint 1 tick before attacking when airborne
+        // This ensures crit knockback registers properly
+        if (airborne && falling && sprinting) {
+            if (!sprintResetPending) {
+                mc.player.setSprinting(false);
+                sprintResetPending = true;
+                return; // Wait 1 tick
+            }
+        }
+        sprintResetPending = false;
+
+        // Cooldown threshold:
+        // - Crits: 100%
+        // - Recently hit (punish/combo): 60% — fire back faster
+        // - Ground sprint hits: 85%
+        float cooldownThreshold;
+        if (airborne && falling) {
+            cooldownThreshold = 1.0f; // full charge for crits
+        } else if (recentlyHit) {
+            cooldownThreshold = 0.60f; // hit back fast when comboed
+        } else {
+            cooldownThreshold = 0.85f; // normal sprint hits
+        }
+
         if (mc.player.getAttackCooldownProgress(1.0f) < cooldownThreshold) return;
 
         Entity target = findTarget(mc);
@@ -115,6 +172,9 @@ public class TriggerBotModule implements ClientModule {
 
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
+
+        // Re-enable sprint after attack for knockback
+        mc.player.setSprinting(true);
 
         cooldownTicks = 1;
     }
