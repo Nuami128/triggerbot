@@ -114,8 +114,7 @@ public class TriggerBotModule implements ClientModule {
 
         boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
 
-        // Crit = airborne AND velocity at -0.1 or below
-        // Also check last tick for consistency
+        // Crit requires velocity at -0.1 or below
         boolean falling = (velY <= -0.1) || (wasAirborne && lastVelY <= -0.1);
 
         // Update tracking
@@ -127,6 +126,9 @@ public class TriggerBotModule implements ClientModule {
         if (onGround && !hasMovement) return;
         if (airborne && !falling) return;
 
+        // Punish crit — recently hit and airborne must have -0.1 or below velocity
+        if (recentlyHit && airborne && velY > -0.1) return;
+
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
         lastProcessedTick = currentTick;
@@ -136,10 +138,8 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // 0.85 for everything — crits, sprint hits, punish hits
-        float cooldownThreshold = recentlyHit ? 0.60f : 0.85f;
-
-        if (mc.player.getAttackCooldownProgress(1.0f) < cooldownThreshold) return;
+        // 0.85 for all hits
+        if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
 
         Entity target = findTarget(mc);
         if (target == null) return;
