@@ -22,13 +22,14 @@ public class TriggerBotModule implements ClientModule {
     private int cooldownTicks = 0;
     private int releaseDelay = 0;
 
-    // Damage tracking for punish crits
+    // Damage tracking
     private float lastHealth = -1f;
     private boolean recentlyHit = false;
     private int hitCooldown = 0;
 
-    // Sprint reset state
+    // Sprint reset
     private boolean sprintResetPending = false;
+    private int sprintResetTicks = 0;
 
     public TriggerBotModule(AutoStunModule autoStun) {
         this.autoStun = autoStun;
@@ -46,6 +47,7 @@ public class TriggerBotModule implements ClientModule {
         recentlyHit = false;
         hitCooldown = 0;
         sprintResetPending = false;
+        sprintResetTicks = 0;
     }
 
     @Override
@@ -57,6 +59,7 @@ public class TriggerBotModule implements ClientModule {
         recentlyHit = false;
         hitCooldown = 0;
         sprintResetPending = false;
+        sprintResetTicks = 0;
     }
 
     @Override
@@ -64,7 +67,7 @@ public class TriggerBotModule implements ClientModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (!enabled || mc.player == null) return;
 
-        // Track health to detect when we take damage
+        // Track damage
         float currentHealth = mc.player.getHealth();
         if (lastHealth > 0 && currentHealth < lastHealth) {
             recentlyHit = true;
@@ -74,6 +77,12 @@ public class TriggerBotModule implements ClientModule {
 
         if (hitCooldown > 0) hitCooldown--;
         if (hitCooldown == 0) recentlyHit = false;
+
+        // Handle sprint reset timer
+        if (sprintResetTicks > 0) {
+            sprintResetTicks--;
+            mc.player.setSprinting(false);
+        }
     }
 
     @Override
@@ -110,17 +119,19 @@ public class TriggerBotModule implements ClientModule {
         boolean airborne = !onGround;
         boolean sprinting = mc.player.isSprinting();
 
-        // Horizontal movement — low threshold to block stationary sweep only
         boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
 
         // Never attack while ascending
         if (ascending) return;
 
+        // Skip during sprint reset window
+        if (sprintResetTicks > 0) return;
+
         // On ground: must be sprinting AND moving
         if (onGround && !sprinting) return;
         if (onGround && !hasMovement) return;
 
-        // Airborne: must be falling for crits
+        // Airborne: must be falling
         if (airborne && !falling) return;
 
         long currentTick = mc.world.getTime();
@@ -132,13 +143,12 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // Sprint reset for crits — stop sprint 1 tick before attacking when airborne
-        if (airborne && falling && sprinting) {
-            if (!sprintResetPending) {
-                mc.player.setSprinting(false);
-                sprintResetPending = true;
-                return;
-            }
+        // Sprint reset before every hit — 1 tick stop then attack
+        if (!sprintResetPending && sprinting) {
+            sprintResetPending = true;
+            sprintResetTicks = 1;
+            mc.player.setSprinting(false);
+            return;
         }
         sprintResetPending = false;
 
@@ -164,16 +174,18 @@ public class TriggerBotModule implements ClientModule {
                 && !autoStun.isEnabled()) {
             autoStun.onEnable();
             cooldownTicks = 1;
+            sprintResetPending = false;
             return;
         }
 
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
-        // Re-enable sprint after attack for knockback
+        // Re-enable sprint immediately after hit for KB
         mc.player.setSprinting(true);
 
         cooldownTicks = 1;
+        sprintResetPending = false;
     }
 
     private Entity findTarget(MinecraftClient mc) {
