@@ -27,10 +27,6 @@ public class TriggerBotModule implements ClientModule {
     private boolean recentlyHit = false;
     private int hitCooldown = 0;
 
-    // Sprint reset
-    private boolean sprintResetPending = false;
-    private int sprintResetTicks = 0;
-
     public TriggerBotModule(AutoStunModule autoStun) {
         this.autoStun = autoStun;
     }
@@ -46,8 +42,6 @@ public class TriggerBotModule implements ClientModule {
         lastHealth = -1f;
         recentlyHit = false;
         hitCooldown = 0;
-        sprintResetPending = false;
-        sprintResetTicks = 0;
     }
 
     @Override
@@ -58,8 +52,6 @@ public class TriggerBotModule implements ClientModule {
         lastProcessedTick = -1L;
         recentlyHit = false;
         hitCooldown = 0;
-        sprintResetPending = false;
-        sprintResetTicks = 0;
     }
 
     @Override
@@ -67,7 +59,6 @@ public class TriggerBotModule implements ClientModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (!enabled || mc.player == null) return;
 
-        // Track damage
         float currentHealth = mc.player.getHealth();
         if (lastHealth > 0 && currentHealth < lastHealth) {
             recentlyHit = true;
@@ -77,12 +68,6 @@ public class TriggerBotModule implements ClientModule {
 
         if (hitCooldown > 0) hitCooldown--;
         if (hitCooldown == 0) recentlyHit = false;
-
-        // Handle sprint reset timer
-        if (sprintResetTicks > 0) {
-            sprintResetTicks--;
-            mc.player.setSprinting(false);
-        }
     }
 
     @Override
@@ -106,7 +91,6 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // Only fire with sword or axe
         ItemStack held = mc.player.getMainHandStack();
         if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) return;
 
@@ -117,21 +101,11 @@ public class TriggerBotModule implements ClientModule {
         boolean ascending = velY > 0;
         boolean falling = velY < 0;
         boolean airborne = !onGround;
-        boolean sprinting = mc.player.isSprinting();
 
         boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
 
-        // Never attack while ascending
         if (ascending) return;
-
-        // Skip during sprint reset window
-        if (sprintResetTicks > 0) return;
-
-        // On ground: must be sprinting AND moving
-        if (onGround && !sprinting) return;
         if (onGround && !hasMovement) return;
-
-        // Airborne: must be falling
         if (airborne && !falling) return;
 
         long currentTick = mc.world.getTime();
@@ -142,15 +116,6 @@ public class TriggerBotModule implements ClientModule {
             cooldownTicks--;
             return;
         }
-
-        // Sprint reset before every hit — 1 tick stop then attack
-        if (!sprintResetPending && sprinting) {
-            sprintResetPending = true;
-            sprintResetTicks = 1;
-            mc.player.setSprinting(false);
-            return;
-        }
-        sprintResetPending = false;
 
         // Cooldown threshold
         float cooldownThreshold;
@@ -167,25 +132,23 @@ public class TriggerBotModule implements ClientModule {
         Entity target = findTarget(mc);
         if (target == null) return;
 
-        // Trigger AutoStun if target is shielding and facing us
+        // Trigger AutoStun if shielding
         if (target instanceof PlayerEntity pe
                 && pe.isBlocking()
                 && CombatUtil.isFacingUs(mc, target)
                 && !autoStun.isEnabled()) {
             autoStun.onEnable();
             cooldownTicks = 1;
-            sprintResetPending = false;
             return;
         }
 
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
-        // Re-enable sprint immediately after hit for KB
-        mc.player.setSprinting(true);
+        // Sprint reset AFTER hit — stop sprint, SprintUtil resprints next tick
+        mc.player.setSprinting(false);
 
         cooldownTicks = 1;
-        sprintResetPending = false;
     }
 
     private Entity findTarget(MinecraftClient mc) {
