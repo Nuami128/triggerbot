@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(MinecraftClient.class)
 public class MixinMinecraftClient {
 
-    @Inject(method = "setScreen", at = @At("HEAD"))
+    @Inject(method = "setScreen", at = @At("TAIL"))
     private void onSetScreen(Screen screen, CallbackInfo ci) {
         if (!(screen instanceof InventoryScreen)) return;
 
@@ -22,7 +22,7 @@ public class MixinMinecraftClient {
 
         ModuleManager.getInstance().find("Inventory Eat").ifPresent(m -> {
             if (m instanceof InventoryEatModule iem) {
-                iem.tryEat();
+                iem.scheduleEat();
             }
         });
     }
