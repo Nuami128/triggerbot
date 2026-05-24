@@ -6,6 +6,10 @@ import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
 
 public class InventoryEatModule extends EmptyModule {
 
@@ -15,7 +19,6 @@ public class InventoryEatModule extends EmptyModule {
         super("Inventory Eat");
     }
 
-    // Called from mixin when inventory opens
     public void scheduleEat() {
         pendingEat = true;
     }
@@ -26,8 +29,6 @@ public class InventoryEatModule extends EmptyModule {
 
         if (mc.player == null || mc.world == null) return;
         if (mc.interactionManager == null) return;
-
-        // If inventory closed, reset
         if (!(mc.currentScreen instanceof InventoryScreen)) {
             pendingEat = false;
             return;
@@ -38,28 +39,20 @@ public class InventoryEatModule extends EmptyModule {
         Hand hand = getEatingHand(mc);
         if (hand == null) return;
 
-        // Fire right click on the tick after inventory opens
-        if (pendingEat) {
+        if (pendingEat || mc.player.isUsingItem()) {
+            // Temporarily close screen, interact, reopen
+            mc.player.networkHandler.sendPacket(
+                new net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket(0)
+            );
             mc.interactionManager.interactItem(mc.player, hand);
             pendingEat = false;
-            return;
-        }
-
-        // Keep eating if not finished
-        if (mc.player.isUsingItem()) {
-            mc.interactionManager.interactItem(mc.player, hand);
         }
     }
 
     private Hand getEatingHand(MinecraftClient mc) {
         if (mc.player == null) return null;
-
-        ItemStack offhand = mc.player.getOffHandStack();
-        ItemStack mainhand = mc.player.getMainHandStack();
-
-        if (isFood(offhand)) return Hand.OFF_HAND;
-        if (isFood(mainhand)) return Hand.MAIN_HAND;
-
+        if (isFood(mc.player.getOffHandStack())) return Hand.OFF_HAND;
+        if (isFood(mc.player.getMainHandStack())) return Hand.MAIN_HAND;
         return null;
     }
 
