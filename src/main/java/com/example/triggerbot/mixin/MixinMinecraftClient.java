@@ -3,8 +3,10 @@ package com.example.triggerbot.mixin;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.client.network.ClientPlayerInteractionManager;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.util.Hand;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -22,11 +24,9 @@ public class MixinMinecraftClient {
         if (!(screen instanceof InventoryScreen)) return;
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.interactionManager == null) return;
+        if (mc.player == null || mc.getNetworkHandler() == null) return;
         if (mc.player.getHungerManager().getFoodLevel() >= 20) return;
 
-        // currentScreen is still null here — inventory hasn't opened yet
-        // so interactItem won't be blocked
         Hand hand = null;
         ItemStack offhand = mc.player.getOffHandStack();
         ItemStack mainhand = mc.player.getMainHandStack();
@@ -39,7 +39,11 @@ public class MixinMinecraftClient {
 
         if (hand == null) return;
 
-        // Call interactItem while screen is still null
-        mc.interactionManager.interactItem(mc.player, hand);
+        // Get sequence from network handler and send raw packet
+        int sequence = mc.getNetworkHandler().getSequence().get();
+        mc.getNetworkHandler().sendPacket(
+            new PlayerInteractItemC2SPacket(hand, sequence, mc.player.getYaw(), mc.player.getPitch())
+        );
+        mc.player.swingHand(hand);
     }
 }
