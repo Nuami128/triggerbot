@@ -12,8 +12,8 @@ public class SprintUtil {
         if (mc.player.isTouchingWater()) return;
         if (!mc.options.forwardKey.isPressed()) return;
 
-        if (!mc.player.isSprinting()) {
-            mc.player.setSprinting(true);
-        }
+        // Force sprint every tick regardless of what cancelled it
+        mc.player.setSprinting(true);
+        mc.options.sprintKey.setPressed(true);
     }
 }
