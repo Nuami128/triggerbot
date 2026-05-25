@@ -3,10 +3,9 @@ package com.example.triggerbot.module.impl;
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
 
 public class AutoJumpResetModule extends EmptyModule {
 
@@ -24,37 +23,49 @@ public class AutoJumpResetModule extends EmptyModule {
         if (mc.currentScreen != null) return;
         if (mc.player.isDead()) return;
 
-        // Don't jump reset while eating
-        if (mc.player.isUsingItem()) return;
-
-        // Only on ground — no crits, no airborne
-        if (!mc.player.isOnGround()) return;
-
-        // Must be sprinting
-        if (!mc.player.isSprinting()) return;
-
-        // Must be moving forward
-        if (!mc.options.forwardKey.isPressed()) return;
-
         float currentHealth = mc.player.getHealth();
-
-        // Detect damage taken this tick
         boolean tookDamage = lastHealth > 0 && currentHealth < lastHealth;
         lastHealth = currentHealth;
 
         if (!tookDamage) return;
 
-        // Must be facing 180° away from attacker
-        Entity attacker = findAttacker(mc);
-        if (attacker == null) return;
-        if (!isFacingAway(mc, attacker)) return;
+        // Log every failed check so we know where it stops
+        if (mc.player.isUsingItem()) {
+            mc.player.sendMessage(Text.literal("§cJR: eating"), true);
+            return;
+        }
 
-        // Jump in the same tick as damage — perfect timing
+        if (!mc.player.isOnGround()) {
+            mc.player.sendMessage(Text.literal("§cJR: airborne"), true);
+            return;
+        }
+
+        if (!mc.player.isSprinting()) {
+            mc.player.sendMessage(Text.literal("§cJR: not sprinting"), true);
+            return;
+        }
+
+        if (!mc.options.forwardKey.isPressed()) {
+            mc.player.sendMessage(Text.literal("§cJR: not moving forward"), true);
+            return;
+        }
+
+        Entity attacker = findAttacker(mc);
+        if (attacker == null) {
+            mc.player.sendMessage(Text.literal("§cJR: no attacker"), true);
+            return;
+        }
+
+        if (!isFacingAway(mc, attacker)) {
+            float diff = getFacingDiff(mc, attacker);
+            mc.player.sendMessage(Text.literal("§cJR: wrong angle " + (int) diff + "°"), true);
+            return;
+        }
+
         mc.player.jump();
-        mc.player.sendMessage(net.minecraft.text.Text.literal("§aJump Reset"), true);
+        mc.player.sendMessage(Text.literal("§aJump Reset"), true);
     }
 
-    // Find the nearest player attacker in reach
     private Entity findAttacker(MinecraftClient mc) {
         Entity closest = null;
         double closestDist = Double.MAX_VALUE;
@@ -80,23 +91,16 @@ public class AutoJumpResetModule extends EmptyModule {
         return closest;
     }
 
-    // Check if player is facing 180° away from the attacker (within 45° tolerance)
-    private boolean isFacingAway(MinecraftClient mc, Entity attacker) {
-        // Direction from us to attacker
+    private float getFacingDiff(MinecraftClient mc, Entity attacker) {
         double dx = attacker.getX() - mc.player.getX();
         double dz = attacker.getZ() - mc.player.getZ();
-
-        // Angle to attacker
-        float angleToAttacker = (float) Math.toDegrees(Math.atan2(-dx, dz));
-
-        // Our yaw
+        float angleToAttacker = MathHelper.wrapDegrees((float) Math.toDegrees(Math.atan2(-dx, dz)));
         float ourYaw = MathHelper.wrapDegrees(mc.player.getYaw());
-        angleToAttacker = MathHelper.wrapDegrees(angleToAttacker);
+        return Math.abs(MathHelper.wrapDegrees(ourYaw - angleToAttacker));
+    }
 
-        // Difference — 180° means we're facing away
-        float diff = Math.abs(MathHelper.wrapDegrees(ourYaw - angleToAttacker));
-
-        // Allow 45° tolerance either side of 180°
+    private boolean isFacingAway(MinecraftClient mc, Entity attacker) {
+        float diff = getFacingDiff(mc, attacker);
         return diff >= 135f && diff <= 225f;
     }
 }
