@@ -10,27 +10,28 @@ import net.minecraft.util.math.MathHelper;
 public class AutoJumpResetModule extends EmptyModule {
 
     private boolean damagePending = false;
+    private int lastHurtTime = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
 
-    public void onDamageTaken() {
-        damagePending = true;
-    }
-
     @Override
     public void onTick() {
-        if (!damagePending) return;
-
         MinecraftClient mc = MinecraftClient.getInstance();
-
         if (mc.player == null || mc.world == null) return;
         if (mc.currentScreen != null) return;
-        if (mc.player.isDead()) {
-            damagePending = false;
-            return;
+        if (mc.player.isDead()) return;
+
+        int hurtTime = mc.player.hurtTime;
+
+        // Fire when hurtTime transitions from 0 to positive — exactly once per hit
+        if (hurtTime > 0 && lastHurtTime == 0) {
+            damagePending = true;
         }
+        lastHurtTime = hurtTime;
+
+        if (!damagePending) return;
 
         if (mc.player.isUsingItem()) {
             mc.player.sendMessage(Text.literal("§cJR: eating"), true);
@@ -77,7 +78,7 @@ public class AutoJumpResetModule extends EmptyModule {
             return;
         }
 
-        // All checks passed — clear flag and jump
+        // All checks passed
         damagePending = false;
         mc.player.jump();
         mc.player.sendMessage(Text.literal("§aJump Reset"), true);
