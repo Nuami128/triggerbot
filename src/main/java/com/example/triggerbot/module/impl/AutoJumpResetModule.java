@@ -29,7 +29,6 @@ public class AutoJumpResetModule extends EmptyModule {
 
         if (!tookDamage) return;
 
-        // Log every failed check so we know where it stops
         if (mc.player.isUsingItem()) {
             mc.player.sendMessage(Text.literal("§cJR: eating"), true);
             return;
@@ -45,8 +44,11 @@ public class AutoJumpResetModule extends EmptyModule {
             return;
         }
 
-        if (!mc.options.forwardKey.isPressed()) {
-            mc.player.sendMessage(Text.literal("§cJR: not moving forward"), true);
+        // Velocity check instead of key press — works on Android
+        double velX = mc.player.getVelocity().x;
+        double velZ = mc.player.getVelocity().z;
+        if ((velX * velX + velZ * velZ) < 0.001) {
+            mc.player.sendMessage(Text.literal("§cJR: not moving"), true);
             return;
         }
 
@@ -62,7 +64,13 @@ public class AutoJumpResetModule extends EmptyModule {
             return;
         }
 
+        // Force jump velocity directly
         mc.player.jump();
+        mc.player.setVelocity(
+                mc.player.getVelocity().x,
+                0.42f,
+                mc.player.getVelocity().z
+        );
         mc.player.sendMessage(Text.literal("§aJump Reset"), true);
     }
 
@@ -94,7 +102,9 @@ public class AutoJumpResetModule extends EmptyModule {
     private float getFacingDiff(MinecraftClient mc, Entity attacker) {
         double dx = attacker.getX() - mc.player.getX();
         double dz = attacker.getZ() - mc.player.getZ();
-        float angleToAttacker = MathHelper.wrapDegrees((float) Math.toDegrees(Math.atan2(-dx, dz)));
+        float angleToAttacker = MathHelper.wrapDegrees(
+                (float) Math.toDegrees(Math.atan2(-dx, dz))
+        );
         float ourYaw = MathHelper.wrapDegrees(mc.player.getYaw());
         return Math.abs(MathHelper.wrapDegrees(ourYaw - angleToAttacker));
     }
