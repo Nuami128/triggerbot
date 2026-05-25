@@ -9,25 +9,17 @@ import net.minecraft.util.math.MathHelper;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private float lastHealth = -1f;
-
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
 
-    @Override
-    public void onTick() {
+    // Called from mixin when health update packet arrives
+    public void onDamageTaken() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (mc.player == null || mc.world == null) return;
         if (mc.currentScreen != null) return;
         if (mc.player.isDead()) return;
-
-        float currentHealth = mc.player.getHealth();
-        boolean tookDamage = lastHealth > 0 && currentHealth < lastHealth;
-        lastHealth = currentHealth;
-
-        if (!tookDamage) return;
 
         if (mc.player.isUsingItem()) {
             mc.player.sendMessage(Text.literal("§cJR: eating"), true);
@@ -44,7 +36,6 @@ public class AutoJumpResetModule extends EmptyModule {
             return;
         }
 
-        // Velocity check instead of key press — works on Android
         double velX = mc.player.getVelocity().x;
         double velZ = mc.player.getVelocity().z;
         if ((velX * velX + velZ * velZ) < 0.001) {
@@ -64,7 +55,6 @@ public class AutoJumpResetModule extends EmptyModule {
             return;
         }
 
-        // Force jump velocity directly
         mc.player.jump();
         mc.player.setVelocity(
                 mc.player.getVelocity().x,
@@ -73,6 +63,9 @@ public class AutoJumpResetModule extends EmptyModule {
         );
         mc.player.sendMessage(Text.literal("§aJump Reset"), true);
     }
+
+    @Override
+    public void onTick() {}
 
     private Entity findAttacker(MinecraftClient mc) {
         Entity closest = null;
