@@ -15,12 +15,10 @@ public class MixinClientPlayNetworkHandler {
 
     @Inject(method = "onHealthUpdate", at = @At("HEAD"))
     private void onHealthUpdate(HealthUpdateS2CPacket packet, CallbackInfo ci) {
-        System.out.println("Health packet: " + packet.getHealth());
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) return;
 
-        if (packet.getHealth() < mc.player.getHealth()) {
-            System.out.println("Damage detected");
+        if (mc.player.hurtTime > 0) {
             ModuleManager.getInstance().find("Auto Jump Reset").ifPresent(m -> {
                 if (m instanceof AutoJumpResetModule ajr) {
                     ajr.onDamageTaken();
