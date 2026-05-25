@@ -51,6 +51,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
         // Jump in the same tick as damage — perfect timing
         mc.player.jump();
+        mc.player.sendMessage(net.minecraft.text.Text.literal("§aJump Reset"), true);
     }
 
     // Find the nearest player attacker in reach
