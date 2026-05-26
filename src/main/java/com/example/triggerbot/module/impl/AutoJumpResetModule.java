@@ -9,65 +9,40 @@ import net.minecraft.util.math.MathHelper;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private boolean damagePending = false;
-    private int lastHurtTime = 0;
-
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
 
-    // Called from mixin at exact moment damage lands
     public void onDamageTaken() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return;
-        if (mc.player.isUsingItem()) return;
-        if (!mc.player.isOnGround()) return;
-        if (mc.player.getVelocity().y > 0) return;
-        if (!mc.player.isSprinting()) return;
+
+        if (mc.player.isUsingItem()) { debug(mc, "eating"); return; }
+        if (!mc.player.isOnGround()) { debug(mc, "airborne"); return; }
+        if (mc.player.getVelocity().y > 0) { debug(mc, "ascending"); return; }
+        if (!mc.player.isSprinting()) { debug(mc, "not sprinting"); return; }
 
         double velX = mc.player.getVelocity().x;
         double velZ = mc.player.getVelocity().z;
-        if ((velX * velX + velZ * velZ) < 0.001) return;
+        if ((velX * velX + velZ * velZ) < 0.001) { debug(mc, "not moving"); return; }
 
         Entity attacker = findAttacker(mc);
-        if (attacker == null) return;
-        if (!isAttackerInFront(mc, attacker)) return;
+        if (attacker == null) { debug(mc, "no attacker"); return; }
+        if (!isAttackerInFront(mc, attacker)) {
+            debug(mc, "wrong angle " + (int) getFacingDiff(mc, attacker) + "°");
+            return;
+        }
 
         mc.player.jump();
-        mc.player.sendMessage(Text.literal("§aJump Reset"), true);
+        debug(mc, "§aFired!");
     }
 
     @Override
-    public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.world == null) return;
-        if (mc.currentScreen != null) return;
-        if (mc.player.isDead()) return;
+    public void onTick() {}
 
-        int hurtTime = mc.player.hurtTime;
-
-        // Fallback — retry if first attempt failed
-        if (hurtTime > 0 && lastHurtTime == 0) {
-            damagePending = true;
-        }
-        lastHurtTime = hurtTime;
-
-        if (!damagePending) return;
-        if (!mc.player.isOnGround()) return;
-        if (mc.player.getVelocity().y > 0) return;
-        if (!mc.player.isSprinting()) return;
-
-        double velX = mc.player.getVelocity().x;
-        double velZ = mc.player.getVelocity().z;
-        if ((velX * velX + velZ * velZ) < 0.001) return;
-
-        Entity attacker = findAttacker(mc);
-        if (attacker == null) { damagePending = false; return; }
-        if (!isAttackerInFront(mc, attacker)) { damagePending = false; return; }
-
-        damagePending = false;
-        mc.player.jump();
-        mc.player.sendMessage(Text.literal("§aJump Reset retry"), true);
+    private void debug(MinecraftClient mc, String msg) {
+        if (mc.player != null)
+            mc.player.sendMessage(Text.literal("§eJR: " + msg), true);
     }
 
     private Entity findAttacker(MinecraftClient mc) {
