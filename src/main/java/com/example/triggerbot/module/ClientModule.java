@@ -1,31 +1,21 @@
-// Minecraft 1.21.11 (Fabric)
-package com.example.triggerbot.module;
+package com.example.triggerbot;
 
-/**
- * Minimal contract every module must satisfy.
- * Add further lifecycle hooks here (onRender, onPacket, etc.)
- * as the framework grows.
- */
-public interface ClientModule {
+import com.example.triggerbot.module.ModuleManager;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.minecraft.client.MinecraftClient;
 
-    /** Short, human-readable name shown in the module list / HUD. */
-    String getName();
+public class ClientMod implements ClientModInitializer {
 
-    /** Called once when the module is switched on. */
-    void onEnable();
+    @Override
+    public void onInitializeClient() {
 
-    /** Called once when the module is switched off. */
-    void onDisable();
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (client.player == null || client.world == null) return;
 
-    /**
-     * Called every client tick while the module is registered.
-     * Implementations are responsible for checking their own enabled state.
-     */
-    void onTick();
+            ModuleManager.getInstance().postMovementAll();
+        });
 
-    /**
-     * Called every client tick after movement packets have been sent.
-     * Safe to send hotbar/attack packets here without triggering Grim Post.
-     */
-    default void onPostMovement() {}
+        System.out.println("Client mod initialized");
+    }
 }
