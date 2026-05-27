@@ -4,7 +4,6 @@ import com.example.triggerbot.module.ClientModule;
 import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.AxeItem;
 import net.minecraft.item.ItemStack;
@@ -28,8 +27,6 @@ public class AutoStunModule implements ClientModule {
     @Override
     public String getName() { return "AutoStun"; }
 
-    public boolean isEnabled() { return enabled; }
-
     @Override
     public void onEnable() {
         enabled = true;
@@ -47,18 +44,9 @@ public class AutoStunModule implements ClientModule {
         lastProcessedTick = -1L;
     }
 
-    public void beginSwapBack() {
-        if (state != State.SWAPPING_BACK && state != State.COOLDOWN) {
-            tickCounter = 0;
-            state = State.SWAPPING_BACK;
-        }
-    }
-
     @Override
-    public void onTick() {}
+    public void onTick() {
 
-    @Override
-    public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (!enabled) return;
@@ -70,7 +58,6 @@ public class AutoStunModule implements ClientModule {
 
         if (CombatUtil.isPlayerBusy(mc)) return;
 
-        // Don't fire while ascending
         if (mc.player.getVelocity().y > 0) return;
 
         long currentTick = mc.world.getTime();
@@ -84,7 +71,6 @@ public class AutoStunModule implements ClientModule {
             case IDLE -> {
                 if (mc.player.getAttackCooldownProgress(1.0f) < 1.0f) return;
 
-                // Only fire if holding sword or axe
                 ItemStack held = mc.player.getMainHandStack();
                 if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) {
                     onDisable();
@@ -103,9 +89,9 @@ public class AutoStunModule implements ClientModule {
                     return;
                 }
 
-                // Only swap if currently holding a sword
                 int currentSlot = mc.player.getInventory().getSelectedSlot();
                 ItemStack currentItem = mc.player.getInventory().getStack(currentSlot);
+
                 if (!CombatUtil.isSword(currentItem)) {
                     onDisable();
                     return;
@@ -114,9 +100,7 @@ public class AutoStunModule implements ClientModule {
                 cachedTarget = target;
                 originalSlot = currentSlot;
 
-                if (originalSlot != axeSlot) {
-                    mc.player.getInventory().setSelectedSlot(axeSlot);
-                }
+                mc.player.getInventory().setSelectedSlot(axeSlot);
 
                 tickCounter = 0;
                 state = State.WAITING;
@@ -126,12 +110,11 @@ public class AutoStunModule implements ClientModule {
                 if (tickCounter < 1) return;
 
                 if (!isTargetValid(mc)) {
-                    tickCounter = 0;
                     state = State.SWAPPING_BACK;
+                    tickCounter = 0;
                     return;
                 }
 
-                // Shield break hit
                 mc.interactionManager.attackEntity(mc.player, cachedTarget);
                 mc.player.swingHand(Hand.MAIN_HAND);
 
@@ -140,27 +123,21 @@ public class AutoStunModule implements ClientModule {
             }
 
             case SHIELD_BREAK -> {
-                if (tickCounter < 1) return;
-                // Always proceed to stun — client-side shield state lags
                 tickCounter = 0;
                 state = State.STUN_DELAY;
             }
 
             case STUN_DELAY -> {
-                // ~50ms delay after shield break
-                if (tickCounter < 1) return;
                 tickCounter = 0;
                 state = State.STUN;
             }
 
             case STUN -> {
                 if (!isTargetValid(mc)) {
-                    tickCounter = 0;
                     state = State.SWAPPING_BACK;
                     return;
                 }
 
-                // Stun hit with axe
                 mc.interactionManager.attackEntity(mc.player, cachedTarget);
                 mc.player.swingHand(Hand.MAIN_HAND);
 
@@ -206,7 +183,6 @@ public class AutoStunModule implements ClientModule {
             if (e == mc.player) continue;
             if (!e.isAlive()) continue;
             if (e.isRemoved()) continue;
-            if (e.isSpectator()) continue;
 
             if (!CombatUtil.isInReach(mc, e)) continue;
             if (!pe.isBlocking()) continue;
