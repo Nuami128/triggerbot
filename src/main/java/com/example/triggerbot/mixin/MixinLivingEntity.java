@@ -1,15 +1,27 @@
 package com.example.triggerbot.mixin;
 
-// This mixin is intentionally left empty.
-// The damage detection has been moved to AutoJumpResetModule.onTick()
-// which watches hurtTime transitioning from 0 to max (10).
-// This avoids targeting LivingEntity.damage() whose obfuscated name
-// is unknown at runtime on Mojo (no refMap, no intermediary names).
-
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LivingEntity.class)
 public class MixinLivingEntity {
-    // intentionally empty
+
+    @Inject(method = "damage", at = @At("HEAD"))
+    private void onDamage(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        if (mc.player == null) return;
+
+        if ((Object)this != mc.player) return;
+
+        System.out.println("[TriggerBot] DAMAGE HOOK FIRED");
+
+        mc.options.jumpKey.setPressed(true);
+    }
 }
