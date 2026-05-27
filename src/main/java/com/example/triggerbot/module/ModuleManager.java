@@ -13,13 +13,41 @@ public class ModuleManager {
 
     private final List<ClientModule> modules = new ArrayList<>();
 
+    // -----------------------------
+    // REGISTER MODULES
+    // -----------------------------
     public void register(ClientModule module) {
         modules.add(module);
     }
 
-    public void postMovementAll() {
+    // -----------------------------
+    // MAIN TICK LOOP
+    // -----------------------------
+    public void tickAll() {
         for (ClientModule module : modules) {
+
+            if (module == null) continue;
+
             module.onTick();
         }
+    }
+
+    // -----------------------------
+    // OPTIONAL HELPERS
+    // -----------------------------
+    public void enableAll() {
+        for (ClientModule module : modules) {
+            module.onEnable();
+        }
+    }
+
+    public void disableAll() {
+        for (ClientModule module : modules) {
+            module.onDisable();
+        }
+    }
+
+    public List<ClientModule> getModules() {
+        return modules;
     }
 }
