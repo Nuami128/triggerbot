@@ -12,7 +12,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
     private int prevHurtTime = 0;
     private int pendingJumpTicks = 0;
-    private boolean jumpKeyWasPressed = false;
+    private int jumpHeldTicks = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -40,10 +40,13 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) { prevHurtTime = 0; return; }
 
-        // Release jump key the tick after we pressed it
-        if (jumpKeyWasPressed) {
-            mc.options.jumpKey.setPressed(false);
-            jumpKeyWasPressed = false;
+        // Hold jump key for 2 ticks then release
+        if (jumpHeldTicks > 0) {
+            mc.options.jumpKey.setPressed(true);
+            jumpHeldTicks--;
+            if (jumpHeldTicks == 0) {
+                mc.options.jumpKey.setPressed(false);
+            }
         }
 
         // Detect new hit
@@ -58,26 +61,16 @@ public class AutoJumpResetModule extends EmptyModule {
         if (pendingJumpTicks > 0) {
             pendingJumpTicks--;
             if (mc.player.isOnGround()) {
-                fireJump(mc);
+                debug(mc, "FIRED");
+                System.out.println("[TriggerBot] jump fired");
+                // Hold the key for 2 ticks — simulates a real press+release
+                jumpHeldTicks = 2;
+                mc.options.jumpKey.setPressed(true);
                 pendingJumpTicks = 0;
             } else if (pendingJumpTicks == 0) {
                 debug(mc, "skip: never landed");
             }
         }
-    }
-
-    private void fireJump(MinecraftClient mc) {
-        // Simulate a real key press the same way Minecraft's input handler does it.
-        // setPressed(true) sets the held state.
-        // onKeyPressed() increments the press counter — this is what the jump logic reads
-        // to know a fresh keydown happened this tick, and what input-watching mods see.
-        KeyBinding jumpKey = mc.options.jumpKey;
-        jumpKey.setPressed(true);
-        KeyBinding.onKeyPressed(jumpKey.getDefaultKey().getCode());
-        jumpKeyWasPressed = true; // release next tick
-
-        debug(mc, "FIRED");
-        System.out.println("[TriggerBot] jump key pressed");
     }
 
     private void debug(MinecraftClient mc, String msg) {
