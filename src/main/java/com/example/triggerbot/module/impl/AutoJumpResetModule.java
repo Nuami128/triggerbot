@@ -21,8 +21,8 @@ public class AutoJumpResetModule extends EmptyModule {
     private int disruptionTicks = 0;
     private int jumpHoldTicks = 0;
 
-    public SmartJumpResetV2() {
-        super("Smart Jump Reset V2");
+    public AutoJumpResetModule() {
+        super("Smart Jump Reset");
     }
 
     @Override
