@@ -1,6 +1,7 @@
 package com.example.triggerbot.module;
 
 public abstract class EmptyModule implements ClientModule {
+
     private final String name;
 
     protected EmptyModule(String name) {
@@ -13,17 +14,11 @@ public abstract class EmptyModule implements ClientModule {
     }
 
     @Override
-    public void onEnable() {
-        // default empty
-    }
+    public void onEnable() {}
 
     @Override
-    public void onDisable() {
-        // default empty
-    }
+    public void onDisable() {}
 
     @Override
-    public void onTick() {
-        // default empty
-    }
+    public void onTick() {}
 }
