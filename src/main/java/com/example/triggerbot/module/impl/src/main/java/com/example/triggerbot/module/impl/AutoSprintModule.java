@@ -6,7 +6,9 @@ import net.minecraft.client.MinecraftClient;
 public class AutoSprintModule implements ClientModule {
 
     @Override
-    public String getName() { return "AutoSprint"; }
+    public String getName() {
+        return "AutoSprint";
+    }
 
     @Override
     public void onEnable() {}
@@ -15,10 +17,8 @@ public class AutoSprintModule implements ClientModule {
     public void onDisable() {}
 
     @Override
-    public void onTick() {}
+    public void onTick() {
 
-    @Override
-    public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (mc.player == null) return;
