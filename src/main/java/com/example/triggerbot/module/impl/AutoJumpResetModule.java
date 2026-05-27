@@ -3,16 +3,26 @@ package com.example.triggerbot.module.impl;
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
+import net.minecraft.util.math.Vec3d;
 
-public class AutoJumpResetModule extends EmptyModule {
+public class SmartJumpResetV2 extends EmptyModule {
 
-    private int prevHurtTime = 0;
+    private enum State {
+        IDLE,
+        DISRUPTED,
+        READY,
+        FIRED
+    }
 
-    private int pendingJumpTicks = 0;
-    private int jumpHeldTicks = 0;
+    private State state = State.IDLE;
 
-    public AutoJumpResetModule() {
-        super("Auto Jump Reset");
+    private Vec3d lastVelocity = Vec3d.ZERO;
+
+    private int disruptionTicks = 0;
+    private int jumpHoldTicks = 0;
+
+    public SmartJumpResetV2() {
+        super("Smart Jump Reset V2");
     }
 
     @Override
@@ -21,94 +31,95 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (mc == null || mc.player == null || mc.world == null) {
-            prevHurtTime = 0;
+            reset();
             return;
         }
 
+        Vec3d vel = mc.player.getVelocity();
+        double speed = vel.length();
+        double lastSpeed = lastVelocity.length();
+
         /*
          * =========================
-         * 1. HIT DETECTION
+         * MOVEMENT DISRUPTION DETECTION
          * =========================
-         * hurtTime == 10 means "just got hit"
          */
 
-        int hurtTime = mc.player.hurtTime;
+        double delta = Math.abs(speed - lastSpeed);
 
-        if (hurtTime == 10 && prevHurtTime != 10) {
-            onHit(mc);
+        if (delta > 0.15) {
+            state = State.DISRUPTED;
+            disruptionTicks = 6;
         }
 
-        prevHurtTime = hurtTime;
+        if (disruptionTicks > 0) {
+            disruptionTicks--;
+        }
 
         /*
          * =========================
-         * 2. JUMP HOLD LOGIC
+         * STATE DECAY
          * =========================
-         * Holds jump for a short burst
          */
 
-        if (jumpHeldTicks > 0) {
-            mc.options.jumpKey.setPressed(true);
-            jumpHeldTicks--;
+        if (state == State.DISRUPTED && disruptionTicks <= 0) {
+            state = State.READY;
+        }
 
-            if (jumpHeldTicks == 0) {
+        /*
+         * =========================
+         * EXECUTION CONDITION
+         * =========================
+         */
+
+        if (state == State.READY) {
+
+            if (mc.player.isOnGround() && speed > 0.05) {
+
+                triggerJump(mc);
+                state = State.FIRED;
+            }
+        }
+
+        /*
+         * =========================
+         * JUMP HOLD
+         * =========================
+         */
+
+        if (jumpHoldTicks > 0) {
+            mc.options.jumpKey.setPressed(true);
+            jumpHoldTicks--;
+
+            if (jumpHoldTicks == 0) {
                 mc.options.jumpKey.setPressed(false);
             }
         }
 
-        /*
-         * =========================
-         * 3. EXECUTE JUMP RESET
-         * =========================
-         */
+        lastVelocity = vel;
 
-        if (pendingJumpTicks > 0) {
-
-            if (mc.player.isOnGround()) {
-
-                debug(mc, "JUMP RESET FIRED");
-
-                jumpHeldTicks = 2;      // simulate real press
-                pendingJumpTicks = 0;   // stop waiting
-
-            } else {
-                pendingJumpTicks--;
-            }
-        }
+        debug(mc, "STATE: " + state + " | speed=" + speed);
     }
 
-    /*
-     * =========================
-     * HIT EVENT LOGIC
-     * =========================
-     */
+    private void triggerJump(MinecraftClient mc) {
 
-    private void onHit(MinecraftClient mc) {
+        mc.options.jumpKey.setPressed(true);
+        jumpHoldTicks = 2;
 
-        if (mc.player.isUsingItem()) {
-            debug(mc, "SKIP: using item");
-            return;
-        }
-
-        if (mc.player.getVelocity().horizontalLengthSquared() < 0.0005) {
-            debug(mc, "SKIP: not moving");
-            return;
-        }
-
-        pendingJumpTicks = 5;
-        debug(mc, "HIT DETECTED → jump armed");
+        debug(mc, "FIRED RESET");
     }
 
-    /*
-     * =========================
-     * DEBUG MESSAGE
-     * =========================
-     */
+    private void reset() {
+        state = State.IDLE;
+        disruptionTicks = 0;
+        jumpHoldTicks = 0;
+        lastVelocity = Vec3d.ZERO;
+    }
 
     private void debug(MinecraftClient mc, String msg) {
         if (mc.player != null) {
             mc.player.sendMessage(Text.literal("JR: " + msg), true);
         }
-        System.out.println("[AutoJumpReset] " + msg);
+        System.out.println("[SmartJR] " + msg);
     }
 }
