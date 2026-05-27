@@ -16,12 +16,13 @@ public class MixinLivingEntity {
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        if (mc.player == null) return;
+        if (mc == null || mc.player == null) return;
 
-        if ((Object)this != mc.player) return;
+        // only react to actual player entity safely
+        if (!((Object)this instanceof net.minecraft.client.network.ClientPlayerEntity)) return;
 
         System.out.println("[TriggerBot] DAMAGE HOOK FIRED");
 
-        mc.options.jumpKey.setPressed(true);
+        // SAFE TEST: DO NOT modify input yet
     }
 }
