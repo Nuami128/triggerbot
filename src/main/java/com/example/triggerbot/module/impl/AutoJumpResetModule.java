@@ -14,12 +14,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
     private State state = State.IDLE;
 
-    private int jumpHoldTicks = 0;
-
-    // edge detection
     private int lastHurtTime = 0;
-
-    // prevents READY spam every tick while hurtTime stays > 0
     private int hurtLockTicks = 0;
 
     public AutoJumpResetModule() {
@@ -30,6 +25,7 @@ public class AutoJumpResetModule extends EmptyModule {
     public void onTick() {
 
         MinecraftClient mc = MinecraftClient.getInstance();
+
         if (mc == null || mc.player == null || mc.world == null) {
             reset();
             return;
@@ -37,106 +33,65 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurt = mc.player.hurtTime;
 
-        /*
-         * =========================
-         * LOCK TIMER (prevents spam)
-         * =========================
-         */
+        // cooldown to prevent spam triggers
         if (hurtLockTicks > 0) {
             hurtLockTicks--;
         }
 
-        /*
-         * =========================
-         * TRUE DAMAGE EDGE DETECTION
-         * =========================
-         */
+        // DAMAGE EDGE DETECT
         if (hurt > 0 && lastHurtTime == 0 && hurtLockTicks == 0) {
 
             state = State.READY;
+            hurtLockTicks = 10;
 
-            hurtLockTicks = 10; // block re-trigger for a short window
+            debug(mc, "READY (DAMAGE DETECTED)");
 
-            debug(mc, "READY (EDGE)");
-
-            // optional immediate execution if grounded
-            if (mc.player.isOnGround()) {
-                triggerJump(mc);
-                state = State.FIRED;
-            }
+            triggerJump(mc);
+            state = State.FIRED;
         }
 
-        /*
-         * =========================
-         * JUMP HOLD
-         * =========================
-         */
-        if (jumpHoldTicks > 0) {
-
-            mc.options.jumpKey.setPressed(true);
-
-            jumpHoldTicks--;
-
-            if (jumpHoldTicks == 0) {
-                mc.options.jumpKey.setPressed(false);
-                state = State.IDLE;
-            }
-        }
-
-        /*
-         * =========================
-         * UPDATE TRACKING
-         * =========================
-         */
         lastHurtTime = hurt;
 
         debugActionBar(mc, "STATE=" + state + " | hurt=" + hurt);
     }
 
-    /*
-     * =========================
-     * EXECUTE JUMP RESET
-     * =========================
+    /**
+     * Executes jump reset
      */
     private void triggerJump(MinecraftClient mc) {
 
-        mc.options.jumpKey.setPressed(true);
+        if (mc.player == null) return;
 
-        jumpHoldTicks = 1;
+        System.out.println("[AutoJR] TRIGGER FIRED");
+
+        mc.player.jump(); // ✅ correct 1.21+ method
 
         debug(mc, "FIRED");
     }
 
-    /*
-     * =========================
-     * RESET STATE
-     * =========================
+    /**
+     * Reset internal state
      */
     private void reset() {
-
         state = State.IDLE;
-
-        jumpHoldTicks = 0;
         lastHurtTime = 0;
         hurtLockTicks = 0;
     }
 
-    /*
-     * =========================
-     * DEBUG
-     * =========================
+    /**
+     * Chat debug (action bar style)
      */
     private void debug(MinecraftClient mc, String msg) {
-
         if (mc.player != null) {
             mc.player.sendMessage(Text.of("JR: " + msg), true);
         }
-
         System.out.println("[AutoJR] " + msg);
     }
 
+    /**
+     * Action bar spam (state display)
+     */
     private void debugActionBar(MinecraftClient mc, String msg) {
-
         if (mc.player != null) {
             mc.player.sendMessage(Text.of(msg), true);
         }
