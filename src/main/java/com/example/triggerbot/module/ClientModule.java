@@ -9,4 +9,6 @@ public interface ClientModule {
     void onDisable();
 
     void onTick();
+
+    boolean isEnabled();
 }
