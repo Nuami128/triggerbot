@@ -3,7 +3,6 @@ package com.example.triggerbot.module.impl;
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
-import net.minecraft.util.math.Vec3d;
 
 public class AutoJumpResetModule extends EmptyModule {
 
@@ -17,8 +16,11 @@ public class AutoJumpResetModule extends EmptyModule {
 
     private int jumpHoldTicks = 0;
 
-    // damage edge tracking
+    // edge detection
     private int lastHurtTime = 0;
+
+    // prevents READY spam every tick while hurtTime stays > 0
+    private int hurtLockTicks = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -37,17 +39,27 @@ public class AutoJumpResetModule extends EmptyModule {
 
         /*
          * =========================
-         * INSTANT DAMAGE EDGE
+         * LOCK TIMER (prevents spam)
          * =========================
          */
+        if (hurtLockTicks > 0) {
+            hurtLockTicks--;
+        }
 
-        if (hurt > 0 && lastHurtTime == 0) {
+        /*
+         * =========================
+         * TRUE DAMAGE EDGE DETECTION
+         * =========================
+         */
+        if (hurt > 0 && lastHurtTime == 0 && hurtLockTicks == 0) {
 
             state = State.READY;
 
-            debug(mc, "READY (FAST)");
+            hurtLockTicks = 10; // block re-trigger for a short window
 
-            // optional: immediate execution if grounded
+            debug(mc, "READY (EDGE)");
+
+            // optional immediate execution if grounded
             if (mc.player.isOnGround()) {
                 triggerJump(mc);
                 state = State.FIRED;
@@ -59,7 +71,6 @@ public class AutoJumpResetModule extends EmptyModule {
          * JUMP HOLD
          * =========================
          */
-
         if (jumpHoldTicks > 0) {
 
             mc.options.jumpKey.setPressed(true);
@@ -72,6 +83,11 @@ public class AutoJumpResetModule extends EmptyModule {
             }
         }
 
+        /*
+         * =========================
+         * UPDATE TRACKING
+         * =========================
+         */
         lastHurtTime = hurt;
 
         debugActionBar(mc, "STATE=" + state + " | hurt=" + hurt);
@@ -79,26 +95,37 @@ public class AutoJumpResetModule extends EmptyModule {
 
     /*
      * =========================
-     * EXEC JUMP
+     * EXECUTE JUMP RESET
      * =========================
      */
-
     private void triggerJump(MinecraftClient mc) {
 
         mc.options.jumpKey.setPressed(true);
 
-        jumpHoldTicks = 1; // minimal input simulation
+        jumpHoldTicks = 1;
 
         debug(mc, "FIRED");
     }
 
+    /*
+     * =========================
+     * RESET STATE
+     * =========================
+     */
     private void reset() {
 
         state = State.IDLE;
+
         jumpHoldTicks = 0;
         lastHurtTime = 0;
+        hurtLockTicks = 0;
     }
 
+    /*
+     * =========================
+     * DEBUG
+     * =========================
+     */
     private void debug(MinecraftClient mc, String msg) {
 
         if (mc.player != null) {
