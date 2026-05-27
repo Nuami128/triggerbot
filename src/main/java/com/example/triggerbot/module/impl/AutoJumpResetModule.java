@@ -36,17 +36,13 @@ public class SmartJumpResetV2 extends EmptyModule {
         }
 
         Vec3d vel = mc.player.getVelocity();
+
         double speed = vel.length();
         double lastSpeed = lastVelocity.length();
 
-        /*
-         * =========================
-         * MOVEMENT DISRUPTION DETECTION
-         * =========================
-         */
-
         double delta = Math.abs(speed - lastSpeed);
 
+        // detect movement disruption
         if (delta > 0.15) {
             state = State.DISRUPTED;
             disruptionTicks = 6;
@@ -56,37 +52,20 @@ public class SmartJumpResetV2 extends EmptyModule {
             disruptionTicks--;
         }
 
-        /*
-         * =========================
-         * STATE DECAY
-         * =========================
-         */
-
         if (state == State.DISRUPTED && disruptionTicks <= 0) {
             state = State.READY;
         }
 
-        /*
-         * =========================
-         * EXECUTION CONDITION
-         * =========================
-         */
-
+        // execute jump reset
         if (state == State.READY) {
 
             if (mc.player.isOnGround() && speed > 0.05) {
-
                 triggerJump(mc);
                 state = State.FIRED;
             }
         }
 
-        /*
-         * =========================
-         * JUMP HOLD
-         * =========================
-         */
-
+        // jump hold simulation
         if (jumpHoldTicks > 0) {
             mc.options.jumpKey.setPressed(true);
             jumpHoldTicks--;
@@ -102,7 +81,6 @@ public class SmartJumpResetV2 extends EmptyModule {
     }
 
     private void triggerJump(MinecraftClient mc) {
-
         mc.options.jumpKey.setPressed(true);
         jumpHoldTicks = 2;
 
@@ -118,7 +96,7 @@ public class SmartJumpResetV2 extends EmptyModule {
 
     private void debug(MinecraftClient mc, String msg) {
         if (mc.player != null) {
-            mc.player.sendMessage(Text.literal("JR: " + msg), true);
+            mc.player.sendMessage(Text.of(msg), true);
         }
         System.out.println("[SmartJR] " + msg);
     }
