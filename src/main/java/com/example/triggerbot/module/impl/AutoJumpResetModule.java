@@ -22,6 +22,9 @@ public class AutoJumpResetModule extends EmptyModule {
     private int readyTicks = 0;
     private int jumpHoldTicks = 0;
 
+    // ✅ NEW: proper damage edge detection
+    private int lastHurtTime = 0;
+
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
@@ -39,25 +42,19 @@ public class AutoJumpResetModule extends EmptyModule {
         Vec3d vel = mc.player.getVelocity();
 
         double speed = vel.length();
-        double lastSpeed = lastVelocity.length();
-
-        double delta = Math.abs(speed - lastSpeed);
 
         /*
          * =========================
-         * MOVEMENT DISRUPTION DETECTION
+         * DAMAGE EDGE DETECTION (FIXED)
          * =========================
          */
 
-        // only react if movement changed AND we are hurt
-        if (delta > 0.15 && mc.player.hurtTime > 0) {
+        int hurt = mc.player.hurtTime;
 
-            if (state == State.IDLE || state == State.FIRED) {
-                state = State.DISRUPTED;
-                disruptionTicks = 6;
-
-                debug(mc, "DISRUPTED");
-            }
+        if (hurt > 0 && lastHurtTime == 0) {
+            state = State.DISRUPTED;
+            disruptionTicks = 3; // shorter + faster reaction window
+            debug(mc, "DISRUPTED (EDGE)");
         }
 
         /*
@@ -72,7 +69,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
         /*
          * =========================
-         * READY STATE
+         * READY STATE (faster)
          * =========================
          */
 
@@ -80,31 +77,24 @@ public class AutoJumpResetModule extends EmptyModule {
 
             state = State.READY;
 
-            // tiny stabilization delay
-            readyTicks = 2;
+            readyTicks = 0; // removed artificial delay
 
             debug(mc, "READY");
         }
 
         /*
          * =========================
-         * READY TIMER
+         * EXECUTION
          * =========================
          */
 
         if (state == State.READY) {
 
-            if (readyTicks > 0) {
-                readyTicks--;
-            } else {
+            if (mc.player.isOnGround()) {
 
-                // only jump if grounded and moving
-                if (mc.player.isOnGround() && speed > 0.05) {
+                triggerJump(mc);
 
-                    triggerJump(mc);
-
-                    state = State.FIRED;
-                }
+                state = State.FIRED;
             }
         }
 
@@ -122,18 +112,23 @@ public class AutoJumpResetModule extends EmptyModule {
 
             if (jumpHoldTicks == 0) {
                 mc.options.jumpKey.setPressed(false);
-
-                // return to idle after release
                 state = State.IDLE;
             }
         }
 
+        /*
+         * =========================
+         * UPDATE STATE TRACKING
+         * =========================
+         */
+
         lastVelocity = vel;
+        lastHurtTime = hurt;
 
         debugActionBar(mc,
                 "STATE=" + state +
-                " | delta=" + String.format("%.3f", delta) +
-                " | speed=" + String.format("%.3f", speed)
+                        " | hurt=" + hurt +
+                        " | speed=" + String.format("%.3f", speed)
         );
     }
 
@@ -147,7 +142,6 @@ public class AutoJumpResetModule extends EmptyModule {
 
         mc.options.jumpKey.setPressed(true);
 
-        // simulate short human tap
         jumpHoldTicks = 2;
 
         debug(mc, "FIRED RESET");
@@ -168,6 +162,7 @@ public class AutoJumpResetModule extends EmptyModule {
         jumpHoldTicks = 0;
 
         lastVelocity = Vec3d.ZERO;
+        lastHurtTime = 0;
     }
 
     /*
