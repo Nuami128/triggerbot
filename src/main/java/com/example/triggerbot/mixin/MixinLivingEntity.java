@@ -11,14 +11,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(LivingEntity.class)
 public class MixinLivingEntity {
 
-    @Inject(method = "damage", at = @At("HEAD"))
+    @Inject(
+        method = "damage(Lnet/minecraft/entity/damage/DamageSource;F)Z",
+        at = @At("HEAD")
+    )
     private void onDamage(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (mc == null || mc.player == null) return;
 
-        // only local player
         if (!((Object)this).equals(mc.player)) return;
 
         System.out.println("[TriggerBot] DAMAGE HOOK FIRED");
