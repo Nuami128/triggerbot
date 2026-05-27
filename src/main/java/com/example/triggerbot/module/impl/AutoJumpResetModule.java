@@ -9,52 +9,55 @@ import net.minecraft.util.math.MathHelper;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    // hurtTime counts down from 10 to 0 after a hit.
-    // We detect the moment it jumps back up to 10 (a new hit).
     private int prevHurtTime = 0;
     private int jumpKeyPressTicksRemaining = 0;
+
+    // Track the last few hurtTime values so we can see the pattern in chat
+    private int diagTick = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
 
-    // onDamageTaken() is now called from onTick() instead of from a mixin.
-    // The mixin on LivingEntity.damage() is removed entirely.
     public void onDamageTaken() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return;
 
-        if (mc.player.isUsingItem()) { debug(mc, "eating"); return; }
-        if (!mc.player.isOnGround()) { debug(mc, "airborne"); return; }
-        if (mc.player.getVelocity().y > 0) { debug(mc, "ascending"); return; }
-        if (!mc.player.isSprinting()) { debug(mc, "not sprinting"); return; }
+        // Log every check so we know exactly where it's stopping
+        if (mc.player.isUsingItem()) { debug(mc, "SKIP: eating"); return; }
 
+        boolean onGround = mc.player.isOnGround();
+        double velY = mc.player.getVelocity().y;
+        boolean sprinting = mc.player.isSprinting();
         double velX = mc.player.getVelocity().x;
         double velZ = mc.player.getVelocity().z;
-        if ((velX * velX + velZ * velZ) < 0.001) { debug(mc, "not moving"); return; }
+        double horizSpeedSq = velX * velX + velZ * velZ;
+
+        debug(mc, "onGround=" + onGround + " velY=" + String.format("%.2f", velY)
+                + " sprint=" + sprinting + " hSpd=" + String.format("%.3f", horizSpeedSq));
+
+        if (!onGround) { debug(mc, "SKIP: airborne"); return; }
+        if (velY > 0) { debug(mc, "SKIP: ascending"); return; }
+        if (!sprinting) { debug(mc, "SKIP: not sprinting"); return; }
+        if (horizSpeedSq < 0.001) { debug(mc, "SKIP: not moving"); return; }
 
         Entity attacker = findAttacker(mc);
-        if (attacker == null) { debug(mc, "no attacker"); return; }
-        if (!isAttackerInFront(mc, attacker)) {
-            debug(mc, "wrong angle " + (int) getFacingDiff(mc, attacker) + "deg");
-            return;
-        }
+        if (attacker == null) { debug(mc, "SKIP: no attacker"); return; }
+        float angleDiff = getFacingDiff(mc, attacker);
+        if (angleDiff > 90f) { debug(mc, "SKIP: angle " + (int) angleDiff + "deg"); return; }
 
-        // Strategy 1: direct velocity jump (most compatible)
         mc.player.jump();
 
-        // Strategy 2: key event simulation — uncomment if jump() doesn't register
-        // with the jump reset counter mod. Comment out jump() above first.
+        // Also try key simulation as backup — comment out jump() above if this works better
         // jumpKeyPressTicksRemaining = 2;
         // mc.options.jumpKey.setPressed(true);
 
-        debug(mc, "Fired!");
-        System.out.println("[TriggerBot] AutoJumpReset: jump fired");
+        debug(mc, "FIRED!");
+        System.out.println("[TriggerBot] jump fired");
     }
 
     @Override
     public void onTick() {
-        // Release jump key if Strategy 2 is active
         if (jumpKeyPressTicksRemaining > 0) {
             jumpKeyPressTicksRemaining--;
             if (jumpKeyPressTicksRemaining == 0) {
@@ -63,17 +66,23 @@ public class AutoJumpResetModule extends EmptyModule {
             }
         }
 
-        // Damage detection: hurtTime resets to its max (10) on each new hit.
-        // We fire when it transitions from any lower value back up to 10.
-        // This runs every tick so it's always current — no mixin needed.
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
+        if (mc == null || mc.player == null) { prevHurtTime = 0; return; }
 
         int hurtTime = mc.player.hurtTime;
 
-        // hurtTime == 10 means a fresh hit just registered this tick
-        if (hurtTime == 10 && prevHurtTime < 10) {
-            System.out.println("[TriggerBot] hurtTime triggered: " + prevHurtTime + " -> " + hurtTime);
+        // Log every hurtTime change so we can see the actual values
+        if (hurtTime != prevHurtTime) {
+            System.out.println("[TriggerBot] hurtTime: " + prevHurtTime + " -> " + hurtTime);
+        }
+
+        // Fire when hurtTime rises — covers any max value (10, 20, or other)
+        // prevHurtTime <= 1 means we were at the tail end or idle,
+        // and now hurtTime jumped up, meaning a new hit just landed.
+        if (hurtTime > prevHurtTime && prevHurtTime <= 1) {
+            System.out.println("[TriggerBot] Hit detected! hurtTime=" + hurtTime);
+            // Show in chat too so you can see it on device without logcat
+            mc.player.sendMessage(Text.literal("JR: hit detected! ht=" + hurtTime), true);
             onDamageTaken();
         }
 
@@ -88,25 +97,18 @@ public class AutoJumpResetModule extends EmptyModule {
     private Entity findAttacker(MinecraftClient mc) {
         Entity closest = null;
         double closestDist = Double.MAX_VALUE;
-
         for (Entity e : mc.world.getEntities()) {
             if (!(e instanceof PlayerEntity)) continue;
             if (e == mc.player) continue;
             if (!e.isAlive()) continue;
             if (e.isRemoved()) continue;
             if (e.isSpectator()) continue;
-
             double dx = mc.player.getX() - e.getX();
             double dy = mc.player.getY() - e.getY();
             double dz = mc.player.getZ() - e.getZ();
             double dist = dx * dx + dy * dy + dz * dz;
-
-            if (dist < closestDist) {
-                closestDist = dist;
-                closest = e;
-            }
+            if (dist < closestDist) { closestDist = dist; closest = e; }
         }
-
         return closest;
     }
 
@@ -114,8 +116,7 @@ public class AutoJumpResetModule extends EmptyModule {
         double dx = attacker.getX() - mc.player.getX();
         double dz = attacker.getZ() - mc.player.getZ();
         float angleToAttacker = MathHelper.wrapDegrees(
-                (float) Math.toDegrees(Math.atan2(-dx, dz))
-        );
+                (float) Math.toDegrees(Math.atan2(-dx, dz)));
         float ourYaw = MathHelper.wrapDegrees(mc.player.getYaw());
         float diff = Math.abs(MathHelper.wrapDegrees(ourYaw - angleToAttacker));
         if (diff > 180f) diff = 360f - diff;
