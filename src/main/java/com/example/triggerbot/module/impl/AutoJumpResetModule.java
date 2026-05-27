@@ -2,6 +2,7 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
@@ -10,83 +11,73 @@ import net.minecraft.util.math.MathHelper;
 public class AutoJumpResetModule extends EmptyModule {
 
     private int prevHurtTime = 0;
-    private int jumpKeyPressTicksRemaining = 0;
-
-    // Track the last few hurtTime values so we can see the pattern in chat
-    private int diagTick = 0;
+    private int pendingJumpTicks = 0;
+    private boolean jumpKeyWasPressed = false;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
 
-    public void onDamageTaken() {
-        MinecraftClient mc = MinecraftClient.getInstance();
+    private void onHitReceived(MinecraftClient mc) {
         if (mc.player == null || mc.world == null) return;
+        if (mc.player.isUsingItem()) { debug(mc, "skip: eating"); return; }
+        if (!mc.player.isSprinting()) { debug(mc, "skip: not sprinting"); return; }
 
-        // Log every check so we know exactly where it's stopping
-        if (mc.player.isUsingItem()) { debug(mc, "SKIP: eating"); return; }
-
-        boolean onGround = mc.player.isOnGround();
-        double velY = mc.player.getVelocity().y;
-        boolean sprinting = mc.player.isSprinting();
         double velX = mc.player.getVelocity().x;
         double velZ = mc.player.getVelocity().z;
-        double horizSpeedSq = velX * velX + velZ * velZ;
-
-        debug(mc, "onGround=" + onGround + " velY=" + String.format("%.2f", velY)
-                + " sprint=" + sprinting + " hSpd=" + String.format("%.3f", horizSpeedSq));
-
-        if (!onGround) { debug(mc, "SKIP: airborne"); return; }
-        if (velY > 0) { debug(mc, "SKIP: ascending"); return; }
-        if (!sprinting) { debug(mc, "SKIP: not sprinting"); return; }
-        if (horizSpeedSq < 0.001) { debug(mc, "SKIP: not moving"); return; }
+        if ((velX * velX + velZ * velZ) < 0.001) { debug(mc, "skip: not moving"); return; }
 
         Entity attacker = findAttacker(mc);
-        if (attacker == null) { debug(mc, "SKIP: no attacker"); return; }
-        float angleDiff = getFacingDiff(mc, attacker);
-        if (angleDiff > 90f) { debug(mc, "SKIP: angle " + (int) angleDiff + "deg"); return; }
+        if (attacker == null) { debug(mc, "skip: no attacker"); return; }
+        if (getFacingDiff(mc, attacker) > 90f) { debug(mc, "skip: wrong angle"); return; }
 
-        mc.player.jump();
-
-        // Also try key simulation as backup — comment out jump() above if this works better
-        // jumpKeyPressTicksRemaining = 2;
-        // mc.options.jumpKey.setPressed(true);
-
-        debug(mc, "FIRED!");
-        System.out.println("[TriggerBot] jump fired");
+        pendingJumpTicks = 5;
+        debug(mc, "jump pending");
     }
 
     @Override
     public void onTick() {
-        if (jumpKeyPressTicksRemaining > 0) {
-            jumpKeyPressTicksRemaining--;
-            if (jumpKeyPressTicksRemaining == 0) {
-                MinecraftClient mc = MinecraftClient.getInstance();
-                if (mc != null) mc.options.jumpKey.setPressed(false);
-            }
-        }
-
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) { prevHurtTime = 0; return; }
 
+        // Release jump key the tick after we pressed it
+        if (jumpKeyWasPressed) {
+            mc.options.jumpKey.setPressed(false);
+            jumpKeyWasPressed = false;
+        }
+
+        // Detect new hit
         int hurtTime = mc.player.hurtTime;
-
-        // Log every hurtTime change so we can see the actual values
-        if (hurtTime != prevHurtTime) {
-            System.out.println("[TriggerBot] hurtTime: " + prevHurtTime + " -> " + hurtTime);
-        }
-
-        // Fire when hurtTime rises — covers any max value (10, 20, or other)
-        // prevHurtTime <= 1 means we were at the tail end or idle,
-        // and now hurtTime jumped up, meaning a new hit just landed.
         if (hurtTime > prevHurtTime && prevHurtTime <= 1) {
-            System.out.println("[TriggerBot] Hit detected! hurtTime=" + hurtTime);
-            // Show in chat too so you can see it on device without logcat
-            mc.player.sendMessage(Text.literal("JR: hit detected! ht=" + hurtTime), true);
-            onDamageTaken();
+            System.out.println("[TriggerBot] Hit! hurtTime=" + hurtTime);
+            onHitReceived(mc);
         }
-
         prevHurtTime = hurtTime;
+
+        // Fire jump the tick we land
+        if (pendingJumpTicks > 0) {
+            pendingJumpTicks--;
+            if (mc.player.isOnGround()) {
+                fireJump(mc);
+                pendingJumpTicks = 0;
+            } else if (pendingJumpTicks == 0) {
+                debug(mc, "skip: never landed");
+            }
+        }
+    }
+
+    private void fireJump(MinecraftClient mc) {
+        // Simulate a real key press the same way Minecraft's input handler does it.
+        // setPressed(true) sets the held state.
+        // onKeyPressed() increments the press counter — this is what the jump logic reads
+        // to know a fresh keydown happened this tick, and what input-watching mods see.
+        KeyBinding jumpKey = mc.options.jumpKey;
+        jumpKey.setPressed(true);
+        KeyBinding.onKeyPressed(jumpKey.getDefaultKey().getCode());
+        jumpKeyWasPressed = true; // release next tick
+
+        debug(mc, "FIRED");
+        System.out.println("[TriggerBot] jump key pressed");
     }
 
     private void debug(MinecraftClient mc, String msg) {
@@ -121,9 +112,5 @@ public class AutoJumpResetModule extends EmptyModule {
         float diff = Math.abs(MathHelper.wrapDegrees(ourYaw - angleToAttacker));
         if (diff > 180f) diff = 360f - diff;
         return diff;
-    }
-
-    private boolean isAttackerInFront(MinecraftClient mc, Entity attacker) {
-        return getFacingDiff(mc, attacker) <= 90f;
     }
 }
