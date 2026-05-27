@@ -25,17 +25,18 @@ public class TriggerBotModule implements ClientModule {
     private boolean recentlyHit = false;
     private int hitCooldown = 0;
 
-    private boolean wasAirborne = false;
-    private double lastVelY = 0;
-
     public TriggerBotModule(AutoStunModule autoStun) {
         this.autoStun = autoStun;
     }
 
     @Override
-    public String getName() { return "TriggerBot"; }
+    public String getName() {
+        return "TriggerBot";
+    }
 
-    public boolean isEnabled() { return enabled; }
+    public boolean isEnabled() {
+        return enabled;
+    }
 
     @Override
     public void onEnable() {
@@ -43,8 +44,6 @@ public class TriggerBotModule implements ClientModule {
         lastHealth = -1f;
         recentlyHit = false;
         hitCooldown = 0;
-        wasAirborne = false;
-        lastVelY = 0;
     }
 
     @Override
@@ -54,28 +53,29 @@ public class TriggerBotModule implements ClientModule {
         lastProcessedTick = -1L;
         recentlyHit = false;
         hitCooldown = 0;
-        wasAirborne = false;
-        lastVelY = 0;
     }
 
     @Override
     public void onTick() {
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (!enabled || mc.player == null || mc.world == null) return;
+        if (mc.player == null || mc.world == null) return;
+        if (!enabled) return;
 
-        // ---------------- DAMAGE TRACKING ----------------
+        // ---------------- DAMAGE TRACK ----------------
         float currentHealth = mc.player.getHealth();
+
         if (lastHealth > 0 && currentHealth < lastHealth) {
             recentlyHit = true;
             hitCooldown = 12;
         }
+
         lastHealth = currentHealth;
 
         if (hitCooldown > 0) hitCooldown--;
-        if (hitCooldown == 0) recentlyHit = false;
+        else recentlyHit = false;
 
-        // ---------------- BASIC VALIDATION ----------------
+        // ---------------- BASIC CHECKS ----------------
         if (mc.currentScreen != null) return;
         if (mc.player.isDead()) return;
         if (mc.interactionManager == null) return;
@@ -84,19 +84,18 @@ public class TriggerBotModule implements ClientModule {
         ItemStack held = mc.player.getMainHandStack();
         if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) return;
 
-        // ---------------- COOLDOWN ----------------
+        // cooldown
         if (cooldownTicks > 0) {
             cooldownTicks--;
             return;
         }
 
-        // ---------------- ATTACK COOLDOWN ----------------
         if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
 
         Entity target = findTarget(mc);
         if (target == null) return;
 
-        // ---------------- AUTO STUN TRIGGER ----------------
+        // ---------------- AUTO STUN ----------------
         if (target instanceof PlayerEntity pe
                 && pe.isBlocking()
                 && CombatUtil.isFacingUs(mc, target)
@@ -125,11 +124,11 @@ public class TriggerBotModule implements ClientModule {
 
             if (!(e instanceof LivingEntity)) continue;
             if (e == mc.player) continue;
-            if (!e.isAlive()) continue();
-            if (e.isRemoved()) continue();
-            if (e.isSpectator()) continue();
+            if (!e.isAlive()) continue;
+            if (e.isRemoved()) continue;
+            if (e.isSpectator()) continue;
 
-            if (!CombatUtil.isInReach(mc, e)) continue();
+            if (!CombatUtil.isInReach(mc, e)) continue;
 
             Box box = e.getBoundingBox();
             Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
