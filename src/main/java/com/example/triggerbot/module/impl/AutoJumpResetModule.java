@@ -9,14 +9,17 @@ import net.minecraft.util.math.MathHelper;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    // How many ticks to hold the jump key pressed after triggering.
-    // 1 tick is enough to register a keydown event. 2 is safer.
+    // hurtTime counts down from 10 to 0 after a hit.
+    // We detect the moment it jumps back up to 10 (a new hit).
+    private int prevHurtTime = 0;
     private int jumpKeyPressTicksRemaining = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
 
+    // onDamageTaken() is now called from onTick() instead of from a mixin.
+    // The mixin on LivingEntity.damage() is removed entirely.
     public void onDamageTaken() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return;
@@ -37,35 +40,44 @@ public class AutoJumpResetModule extends EmptyModule {
             return;
         }
 
-        // Strategy 1: directly call jump() — works for vanilla jump counter
+        // Strategy 1: direct velocity jump (most compatible)
         mc.player.jump();
 
-        // Strategy 2: simulate key press — needed if the counter mod watches
-        // for actual key events rather than Y-velocity changes.
-        // This fires jumpKey.setPressed(true) for 2 ticks, then releases in onTick().
-        // Uncomment if jump() alone doesn't register with the counter mod.
-        //
+        // Strategy 2: key event simulation — uncomment if jump() doesn't register
+        // with the jump reset counter mod. Comment out jump() above first.
         // jumpKeyPressTicksRemaining = 2;
         // mc.options.jumpKey.setPressed(true);
 
         debug(mc, "Fired!");
-        System.out.println("[TriggerBot] AutoJumpReset: jump() called");
+        System.out.println("[TriggerBot] AutoJumpReset: jump fired");
     }
 
     @Override
     public void onTick() {
-        // Handle key-press release for Strategy 2.
-        // Safe to keep active even if Strategy 1 is used — does nothing when counter is 0.
+        // Release jump key if Strategy 2 is active
         if (jumpKeyPressTicksRemaining > 0) {
             jumpKeyPressTicksRemaining--;
             if (jumpKeyPressTicksRemaining == 0) {
                 MinecraftClient mc = MinecraftClient.getInstance();
-                if (mc != null) {
-                    mc.options.jumpKey.setPressed(false);
-                    System.out.println("[TriggerBot] AutoJumpReset: jumpKey released");
-                }
+                if (mc != null) mc.options.jumpKey.setPressed(false);
             }
         }
+
+        // Damage detection: hurtTime resets to its max (10) on each new hit.
+        // We fire when it transitions from any lower value back up to 10.
+        // This runs every tick so it's always current — no mixin needed.
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+
+        int hurtTime = mc.player.hurtTime;
+
+        // hurtTime == 10 means a fresh hit just registered this tick
+        if (hurtTime == 10 && prevHurtTime < 10) {
+            System.out.println("[TriggerBot] hurtTime triggered: " + prevHurtTime + " -> " + hurtTime);
+            onDamageTaken();
+        }
+
+        prevHurtTime = hurtTime;
     }
 
     private void debug(MinecraftClient mc, String msg) {
@@ -111,7 +123,6 @@ public class AutoJumpResetModule extends EmptyModule {
     }
 
     private boolean isAttackerInFront(MinecraftClient mc, Entity attacker) {
-        float diff = getFacingDiff(mc, attacker);
-        return diff <= 90f;
+        return getFacingDiff(mc, attacker) <= 90f;
     }
 }
