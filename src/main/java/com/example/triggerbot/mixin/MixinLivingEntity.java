@@ -11,10 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(LivingEntity.class)
 public class MixinLivingEntity {
 
-    @Inject(
-        method = "damage(Lnet/minecraft/entity/damage/DamageSource;F)Z",
-        at = @At("HEAD")
-    )
+    @Inject(method = "damage", at = @At("HEAD"))
     private void onDamage(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
 
         MinecraftClient mc = MinecraftClient.getInstance();
