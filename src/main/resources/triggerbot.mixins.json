@@ -3,8 +3,7 @@
   "package": "com.example.triggerbot.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "MixinClientPlayerEntity",
-    "MixinLivingEntity"
+    "MixinClientPlayerEntity"
   ],
   "client": [],
   "injectors": {
