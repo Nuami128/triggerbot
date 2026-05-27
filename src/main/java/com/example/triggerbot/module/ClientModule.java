@@ -1,21 +1,12 @@
-package com.example.triggerbot;
+package com.example.triggerbot.module;
 
-import com.example.triggerbot.module.ModuleManager;
-import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.client.MinecraftClient;
+public interface ClientModule {
 
-public class ClientModule implements ClientModInitializer {
+    String getName();
 
-    @Override
-    public void onInitializeClient() {
+    void onEnable();
 
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (client.player == null || client.world == null) return;
+    void onDisable();
 
-            ModuleManager.getInstance().postMovementAll();
-        });
-
-        System.out.println("Client mod initialized");
-    }
+    void onTick();
 }
