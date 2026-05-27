@@ -19,10 +19,11 @@ public class AutoJumpResetModule extends EmptyModule {
     private Vec3d lastVelocity = Vec3d.ZERO;
 
     private int disruptionTicks = 0;
+    private int readyTicks = 0;
     private int jumpHoldTicks = 0;
 
     public AutoJumpResetModule() {
-        super("Smart Jump Reset");
+        super("Auto Jump Reset");
     }
 
     @Override
@@ -42,62 +43,158 @@ public class AutoJumpResetModule extends EmptyModule {
 
         double delta = Math.abs(speed - lastSpeed);
 
-        // detect movement disruption
-        if (delta > 0.15) {
-            state = State.DISRUPTED;
-            disruptionTicks = 6;
+        /*
+         * =========================
+         * MOVEMENT DISRUPTION DETECTION
+         * =========================
+         */
+
+        // only react if movement changed AND we are hurt
+        if (delta > 0.15 && mc.player.hurtTime > 0) {
+
+            if (state == State.IDLE || state == State.FIRED) {
+                state = State.DISRUPTED;
+                disruptionTicks = 6;
+
+                debug(mc, "DISRUPTED");
+            }
         }
+
+        /*
+         * =========================
+         * DISRUPTION TIMER
+         * =========================
+         */
 
         if (disruptionTicks > 0) {
             disruptionTicks--;
         }
 
+        /*
+         * =========================
+         * READY STATE
+         * =========================
+         */
+
         if (state == State.DISRUPTED && disruptionTicks <= 0) {
+
             state = State.READY;
+
+            // tiny stabilization delay
+            readyTicks = 2;
+
+            debug(mc, "READY");
         }
 
-        // execute jump reset
+        /*
+         * =========================
+         * READY TIMER
+         * =========================
+         */
+
         if (state == State.READY) {
 
-            if (mc.player.isOnGround() && speed > 0.05) {
-                triggerJump(mc);
-                state = State.FIRED;
+            if (readyTicks > 0) {
+                readyTicks--;
+            } else {
+
+                // only jump if grounded and moving
+                if (mc.player.isOnGround() && speed > 0.05) {
+
+                    triggerJump(mc);
+
+                    state = State.FIRED;
+                }
             }
         }
 
-        // jump hold simulation
+        /*
+         * =========================
+         * JUMP HOLD
+         * =========================
+         */
+
         if (jumpHoldTicks > 0) {
+
             mc.options.jumpKey.setPressed(true);
+
             jumpHoldTicks--;
 
             if (jumpHoldTicks == 0) {
                 mc.options.jumpKey.setPressed(false);
+
+                // return to idle after release
+                state = State.IDLE;
             }
         }
 
         lastVelocity = vel;
 
-        debug(mc, "STATE: " + state + " | speed=" + speed);
+        debugActionBar(mc,
+                "STATE=" + state +
+                " | delta=" + String.format("%.3f", delta) +
+                " | speed=" + String.format("%.3f", speed)
+        );
     }
 
+    /*
+     * =========================
+     * EXECUTE JUMP RESET
+     * =========================
+     */
+
     private void triggerJump(MinecraftClient mc) {
+
         mc.options.jumpKey.setPressed(true);
+
+        // simulate short human tap
         jumpHoldTicks = 2;
 
         debug(mc, "FIRED RESET");
     }
 
+    /*
+     * =========================
+     * RESET STATE
+     * =========================
+     */
+
     private void reset() {
+
         state = State.IDLE;
+
         disruptionTicks = 0;
+        readyTicks = 0;
         jumpHoldTicks = 0;
+
         lastVelocity = Vec3d.ZERO;
     }
 
+    /*
+     * =========================
+     * DEBUG CHAT
+     * =========================
+     */
+
     private void debug(MinecraftClient mc, String msg) {
+
+        if (mc.player != null) {
+            mc.player.sendMessage(Text.of("JR: " + msg), true);
+        }
+
+        System.out.println("[AutoJR] " + msg);
+    }
+
+    /*
+     * =========================
+     * DEBUG ACTION BAR
+     * =========================
+     */
+
+    private void debugActionBar(MinecraftClient mc, String msg) {
+
         if (mc.player != null) {
             mc.player.sendMessage(Text.of(msg), true);
         }
-        System.out.println("[SmartJR] " + msg);
     }
 }
