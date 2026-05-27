@@ -5,7 +5,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
 
-public class SmartJumpResetV2 extends EmptyModule {
+public class AutoJumpResetModule extends EmptyModule {
 
     private enum State {
         IDLE,
