@@ -9,28 +9,12 @@ public abstract class EmptyModule implements ClientModule {
         this.name = name;
     }
 
-    @Override
-    public String getName() {
-        return name;
-    }
+    @Override public String getName() { return name; }
+    @Override public boolean isEnabled() { return enabled; }
 
-    @Override
-    public boolean isEnabled() {
-        return enabled;
-    }
+    @Override public void onEnable() { enabled = true; }
+    @Override public void onDisable() { enabled = false; }
 
-    @Override
-    public void onEnable() {
-        enabled = true;
-    }
-
-    @Override
-    public void onDisable() {
-        enabled = false;
-    }
-
-    @Override
-    public void onTick() {
-        // default empty
-    }
+    @Override public void onTick() {}
+    @Override public void onPostMovement() {}
 }
