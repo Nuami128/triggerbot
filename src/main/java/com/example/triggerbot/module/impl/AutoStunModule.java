@@ -1,4 +1,4 @@
-package com.example.triggerbot.module.impl;
+package com.example.triggerbot.module.EmptyModule;
 
 import com.example.triggerbot.module.ClientModule;
 import com.example.triggerbot.util.CombatUtil;
