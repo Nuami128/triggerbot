@@ -20,6 +20,7 @@ public class TriggerBotModule implements ClientModule {
     private boolean enabled = false;
     private int cooldownTicks = 0;
     private int releaseDelay = 0;
+    private int itemReleaseCooldown = 0;
 
     // Damage tracking
     private float lastHealth = -1f;
@@ -52,6 +53,7 @@ public class TriggerBotModule implements ClientModule {
         hitCooldown = 0;
         wasAirborne = false;
         lastVelY = 0;
+        itemReleaseCooldown = 0;
     }
 
     @Override
@@ -63,6 +65,7 @@ public class TriggerBotModule implements ClientModule {
         hitCooldown = 0;
         wasAirborne = false;
         lastVelY = 0;
+        itemReleaseCooldown = 0;
     }
 
     @Override
@@ -70,7 +73,6 @@ public class TriggerBotModule implements ClientModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (!enabled || mc.player == null) return;
 
-        // Damage tracking
         float currentHealth = mc.player.getHealth();
         if (lastHealth > 0 && currentHealth < lastHealth) {
             recentlyHit = true;
@@ -78,14 +80,11 @@ public class TriggerBotModule implements ClientModule {
         }
         lastHealth = currentHealth;
 
-        if (hitCooldown > 0) {
-            hitCooldown--;
-        }
-        if (hitCooldown == 0) {
-            recentlyHit = false;
-        }
+        if (hitCooldown > 0) hitCooldown--;
+        if (hitCooldown == 0) recentlyHit = false;
     }
 
+    @Override
     public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
@@ -95,6 +94,15 @@ public class TriggerBotModule implements ClientModule {
         if (mc.player.isDead()) return;
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
+
+        // Track item release and hold off for 3 ticks after
+        if (mc.player.isUsingItem()) {
+            itemReleaseCooldown = 3;
+        }
+        if (itemReleaseCooldown > 0) {
+            itemReleaseCooldown--;
+            return;
+        }
 
         if (CombatUtil.isPlayerBusy(mc)) {
             releaseDelay = 2;
@@ -109,9 +117,7 @@ public class TriggerBotModule implements ClientModule {
         }
 
         ItemStack held = mc.player.getMainHandStack();
-        if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) {
-            return;
-        }
+        if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) return;
 
         double velY = mc.player.getVelocity().y;
         double velX = mc.player.getVelocity().x;
@@ -131,7 +137,6 @@ public class TriggerBotModule implements ClientModule {
         if (onGround && !sprinting) return;
         if (onGround && !hasMovement) return;
         if (airborne && !falling) return;
-
         if (recentlyHit && airborne && velY > -0.1) return;
 
         if (cooldownTicks > 0) {
@@ -144,7 +149,6 @@ public class TriggerBotModule implements ClientModule {
         Entity target = findTarget(mc);
         if (target == null) return;
 
-        // Auto stun handoff
         if (target instanceof PlayerEntity pe
                 && pe.isBlocking()
                 && CombatUtil.isFacingUs(mc, target)
@@ -154,11 +158,10 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // Attack directly here, after movement packets have been sent
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(Hand.MAIN_HAND);
-            mc.player.setSprinting(false);
+            // removed setSprinting(false) — caused Simulation flags
             cooldownTicks = 1;
         }
     }
