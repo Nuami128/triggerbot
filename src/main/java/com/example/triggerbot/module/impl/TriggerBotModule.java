@@ -1,6 +1,6 @@
 package com.example.triggerbot.module.impl;
 
-import com.example.triggerbot.module.ClientModule;
+import com.example.triggerbot.module.EmptyModule;
 import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
@@ -13,56 +13,66 @@ import net.minecraft.util.math.Vec3d;
 
 import java.util.Optional;
 
-public class TriggerBotModule implements ClientModule {
+public class TriggerBotModule extends EmptyModule {
 
     private final AutoStunModule autoStun;
 
-    private boolean enabled = false;
     private long lastProcessedTick = -1L;
     private int cooldownTicks = 0;
+    private int releaseDelay = 0;
 
+    // Damage tracking
     private float lastHealth = -1f;
     private boolean recentlyHit = false;
     private int hitCooldown = 0;
 
+    // Crit tracking
+    private boolean wasAirborne = false;
+    private double lastVelY = 0;
+
     public TriggerBotModule(AutoStunModule autoStun) {
+        super("TriggerBot");
         this.autoStun = autoStun;
     }
 
     @Override
-    public String getName() {
-        return "TriggerBot";
-    }
-
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    @Override
     public void onEnable() {
-        enabled = true;
+        super.onEnable();
+
         lastHealth = -1f;
         recentlyHit = false;
         hitCooldown = 0;
+        wasAirborne = false;
+        lastVelY = 0;
     }
 
     @Override
     public void onDisable() {
-        enabled = false;
+        super.onDisable();
+
         cooldownTicks = 0;
+        releaseDelay = 0;
         lastProcessedTick = -1L;
         recentlyHit = false;
         hitCooldown = 0;
+        wasAirborne = false;
+        lastVelY = 0;
     }
 
     @Override
     public void onTick() {
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.world == null) return;
-        if (!enabled) return;
 
-        // ---------------- DAMAGE TRACK ----------------
+        if (!isEnabled()) return;
+        if (mc.player == null || mc.world == null) return;
+        if (mc.currentScreen != null) return;
+        if (mc.player.isDead()) return;
+        if (mc.interactionManager == null) return;
+        if (mc.getNetworkHandler() == null) return;
+
+        // DAMAGE TRACKING
+
         float currentHealth = mc.player.getHealth();
 
         if (lastHealth > 0 && currentHealth < lastHealth) {
@@ -73,29 +83,89 @@ public class TriggerBotModule implements ClientModule {
         lastHealth = currentHealth;
 
         if (hitCooldown > 0) hitCooldown--;
-        else recentlyHit = false;
+        if (hitCooldown == 0) recentlyHit = false;
 
-        // ---------------- BASIC CHECKS ----------------
-        if (mc.currentScreen != null) return;
-        if (mc.player.isDead()) return;
-        if (mc.interactionManager == null) return;
-        if (mc.getNetworkHandler() == null) return;
+        // BUSY CHECK
+
+        if (CombatUtil.isPlayerBusy(mc)) {
+            releaseDelay = 2;
+            wasAirborne = false;
+            lastVelY = 0;
+            return;
+        }
+
+        if (releaseDelay > 0) {
+            releaseDelay--;
+            return;
+        }
+
+        // WEAPON CHECK
 
         ItemStack held = mc.player.getMainHandStack();
-        if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) return;
 
-        // cooldown
+        if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) {
+            return;
+        }
+
+        // MOVEMENT / CRIT CHECKS
+
+        double velY = mc.player.getVelocity().y;
+        double velX = mc.player.getVelocity().x;
+        double velZ = mc.player.getVelocity().z;
+
+        boolean onGround = mc.player.isOnGround();
+        boolean ascending = velY > 0;
+        boolean airborne = !onGround;
+        boolean sprinting = mc.player.isSprinting();
+
+        boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
+
+        boolean falling = (velY <= -0.1)
+                || (wasAirborne && lastVelY <= -0.1);
+
+        wasAirborne = airborne;
+        lastVelY = velY;
+
+        if (ascending) return;
+        if (onGround && !sprinting) return;
+        if (onGround && !hasMovement) return;
+        if (airborne && !falling) return;
+
+        if (recentlyHit && airborne && velY > -0.1) {
+            return;
+        }
+
+        // TICK LOCK
+
+        long currentTick = mc.world.getTime();
+
+        if (currentTick == lastProcessedTick) {
+            return;
+        }
+
+        lastProcessedTick = currentTick;
+
+        // COOLDOWN
+
         if (cooldownTicks > 0) {
             cooldownTicks--;
             return;
         }
 
-        if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
+        if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) {
+            return;
+        }
+
+        // TARGET
 
         Entity target = findTarget(mc);
-        if (target == null) return;
 
-        // ---------------- AUTO STUN ----------------
+        if (target == null) {
+            return;
+        }
+
+        // AUTO STUN
+
         if (target instanceof PlayerEntity pe
                 && pe.isBlocking()
                 && CombatUtil.isFacingUs(mc, target)
@@ -106,11 +176,14 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // ---------------- ATTACK ----------------
+        // ATTACK
+
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
+        // Sprint reset
         mc.player.setSprinting(false);
+
         cooldownTicks = 1;
     }
 
@@ -133,7 +206,9 @@ public class TriggerBotModule implements ClientModule {
             Box box = e.getBoundingBox();
             Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
 
-            if (hit.isPresent()) return e;
+            if (hit.isPresent()) {
+                return e;
+            }
         }
 
         return null;
