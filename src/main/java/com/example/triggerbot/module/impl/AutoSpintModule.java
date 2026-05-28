@@ -1,4 +1,4 @@
-package com.example.triggerbot.module.EmotyModule;
+package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import com.example.triggerbot.module.ClientModule;
