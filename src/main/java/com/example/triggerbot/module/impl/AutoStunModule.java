@@ -25,6 +25,9 @@ public class AutoStunModule implements ClientModule {
     private Entity cachedTarget = null;
     private long lastProcessedTick = -1L;
 
+    // Track blocking state to avoid attacking on the same tick shield drops
+    private boolean wasBlocking = false;
+
     @Override
     public String getName() { return "AutoStun"; }
 
@@ -36,6 +39,7 @@ public class AutoStunModule implements ClientModule {
         state = State.IDLE;
         tickCounter = 0;
         cachedTarget = null;
+        wasBlocking = false;
     }
 
     @Override
@@ -45,6 +49,7 @@ public class AutoStunModule implements ClientModule {
         tickCounter = 0;
         cachedTarget = null;
         lastProcessedTick = -1L;
+        wasBlocking = false;
     }
 
     public void beginSwapBack() {
@@ -68,13 +73,16 @@ public class AutoStunModule implements ClientModule {
         if (mc.getNetworkHandler() == null) return;
 
         if (CombatUtil.isPlayerBusy(mc)) return;
-
-        // Don't fire while ascending
         if (mc.player.getVelocity().y > 0) return;
 
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
         lastProcessedTick = currentTick;
+
+        // Update blocking state for PacketOrderI guard
+        boolean currentlyBlocking = cachedTarget instanceof PlayerEntity pe && pe.isBlocking();
+        boolean justStoppedBlocking = wasBlocking && !currentlyBlocking;
+        wasBlocking = currentlyBlocking;
 
         tickCounter++;
 
@@ -83,7 +91,6 @@ public class AutoStunModule implements ClientModule {
             case IDLE -> {
                 if (mc.player.getAttackCooldownProgress(1.0f) < 1.0f) return;
 
-                // Only fire if holding sword or axe
                 ItemStack held = mc.player.getMainHandStack();
                 if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) {
                     onDisable();
@@ -102,7 +109,6 @@ public class AutoStunModule implements ClientModule {
                     return;
                 }
 
-                // Only swap if currently holding a sword
                 int currentSlot = mc.player.getInventory().getSelectedSlot();
                 ItemStack currentItem = mc.player.getInventory().getStack(currentSlot);
                 if (!CombatUtil.isSword(currentItem)) {
@@ -112,6 +118,7 @@ public class AutoStunModule implements ClientModule {
 
                 cachedTarget = target;
                 originalSlot = currentSlot;
+                wasBlocking = target instanceof PlayerEntity pe && pe.isBlocking();
 
                 if (originalSlot != axeSlot) {
                     mc.player.getInventory().setSelectedSlot(axeSlot);
@@ -130,7 +137,9 @@ public class AutoStunModule implements ClientModule {
                     return;
                 }
 
-                // Shield break hit
+                // Skip if shield just dropped this tick — would cause PacketOrderI
+                if (justStoppedBlocking) return;
+
                 mc.interactionManager.attackEntity(mc.player, cachedTarget);
                 mc.player.swingHand(Hand.MAIN_HAND);
 
@@ -140,13 +149,11 @@ public class AutoStunModule implements ClientModule {
 
             case SHIELD_BREAK -> {
                 if (tickCounter < 1) return;
-                // Always proceed to stun — client-side shield state lags
                 tickCounter = 0;
                 state = State.STUN_DELAY;
             }
 
             case STUN_DELAY -> {
-                // ~50ms delay after shield break
                 if (tickCounter < 1) return;
                 tickCounter = 0;
                 state = State.STUN;
@@ -159,7 +166,9 @@ public class AutoStunModule implements ClientModule {
                     return;
                 }
 
-                // Stun hit with axe
+                // Skip if shield just dropped this tick — would cause PacketOrderI
+                if (justStoppedBlocking) return;
+
                 mc.interactionManager.attackEntity(mc.player, cachedTarget);
                 mc.player.swingHand(Hand.MAIN_HAND);
 
@@ -206,7 +215,6 @@ public class AutoStunModule implements ClientModule {
             if (!e.isAlive()) continue;
             if (e.isRemoved()) continue;
             if (e.isSpectator()) continue;
-
             if (!CombatUtil.isInReach(mc, e)) continue;
             if (!pe.isBlocking()) continue;
             if (!CombatUtil.isFacingUs(mc, e)) continue;
