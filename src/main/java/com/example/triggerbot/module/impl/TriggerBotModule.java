@@ -77,8 +77,7 @@ public class TriggerBotModule implements ClientModule {
         if (hitCooldown > 0) hitCooldown--;
         if (hitCooldown == 0) recentlyHit = false;
     }
-
-    @Override
+    
     public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
