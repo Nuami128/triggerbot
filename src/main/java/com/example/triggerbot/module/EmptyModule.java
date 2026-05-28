@@ -3,6 +3,7 @@ package com.example.triggerbot.module;
 public abstract class EmptyModule implements ClientModule {
 
     private final String name;
+    protected boolean enabled = false;
 
     protected EmptyModule(String name) {
         this.name = name;
@@ -14,11 +15,22 @@ public abstract class EmptyModule implements ClientModule {
     }
 
     @Override
-    public void onEnable() {}
+    public boolean isEnabled() {
+        return enabled;
+    }
 
     @Override
-    public void onDisable() {}
+    public void onEnable() {
+        enabled = true;
+    }
 
     @Override
-    public void onTick() {}
+    public void onDisable() {
+        enabled = false;
+    }
+
+    @Override
+    public void onTick() {
+        // default empty
+    }
 }
