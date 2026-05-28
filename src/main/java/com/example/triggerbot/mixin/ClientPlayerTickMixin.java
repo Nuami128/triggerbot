@@ -25,7 +25,7 @@ public class ClientPlayerTickMixin {
         wasHurt = hurtNow;
     }
 
-    @Inject(method = "sendMovementPackets", at = @At("TAIL"))
+    @Inject(method = "tickMovement", at = @At("TAIL"))
     private void onPostMovement(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
