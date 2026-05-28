@@ -13,8 +13,12 @@ import net.minecraft.util.math.Vec3d;
 
 import java.util.Optional;
 
-public class AutoStunModule implements ClientModule {
+public class AutoStunModule extends EmptyModule {
 
+public AutoStunModule() {
+    super("AutoStun");
+}
+    
     private enum State { IDLE, WAITING, SHIELD_BREAK, STUN_DELAY, STUN, SWAPPING_BACK, COOLDOWN }
 
     private boolean enabled = false;
