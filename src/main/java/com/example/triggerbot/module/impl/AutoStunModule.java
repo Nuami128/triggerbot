@@ -4,7 +4,6 @@ import com.example.triggerbot.module.ClientModule;
 import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.AxeItem;
 import net.minecraft.item.ItemStack;
@@ -25,8 +24,8 @@ public class AutoStunModule implements ClientModule {
     private Entity cachedTarget = null;
     private long lastProcessedTick = -1L;
 
-    // Track blocking state to avoid attacking on the same tick shield drops
     private boolean wasBlocking = false;
+    private boolean wasUsingItem = false;
 
     @Override
     public String getName() { return "AutoStun"; }
@@ -40,6 +39,7 @@ public class AutoStunModule implements ClientModule {
         tickCounter = 0;
         cachedTarget = null;
         wasBlocking = false;
+        wasUsingItem = false;
     }
 
     @Override
@@ -50,6 +50,7 @@ public class AutoStunModule implements ClientModule {
         cachedTarget = null;
         lastProcessedTick = -1L;
         wasBlocking = false;
+        wasUsingItem = false;
     }
 
     public void beginSwapBack() {
@@ -62,6 +63,7 @@ public class AutoStunModule implements ClientModule {
     @Override
     public void onTick() {}
 
+    @Override
     public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
@@ -75,11 +77,17 @@ public class AutoStunModule implements ClientModule {
         if (CombatUtil.isPlayerBusy(mc)) return;
         if (mc.player.getVelocity().y > 0) return;
 
+        // Guard: skip the tick the player releases their own item use
+        boolean playerUsingItem = mc.player.isUsingItem();
+        boolean justReleasedItem = wasUsingItem && !playerUsingItem;
+        wasUsingItem = playerUsingItem;
+        if (justReleasedItem) return;
+
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
         lastProcessedTick = currentTick;
 
-        // Update blocking state for PacketOrderI guard
+        // Guard: skip the tick the target stops blocking
         boolean currentlyBlocking = cachedTarget instanceof PlayerEntity pe && pe.isBlocking();
         boolean justStoppedBlocking = wasBlocking && !currentlyBlocking;
         wasBlocking = currentlyBlocking;
@@ -130,14 +138,11 @@ public class AutoStunModule implements ClientModule {
 
             case WAITING -> {
                 if (tickCounter < 1) return;
-
                 if (!isTargetValid(mc)) {
                     tickCounter = 0;
                     state = State.SWAPPING_BACK;
                     return;
                 }
-
-                // Skip if shield just dropped this tick — would cause PacketOrderI
                 if (justStoppedBlocking) return;
 
                 mc.interactionManager.attackEntity(mc.player, cachedTarget);
@@ -165,8 +170,6 @@ public class AutoStunModule implements ClientModule {
                     state = State.SWAPPING_BACK;
                     return;
                 }
-
-                // Skip if shield just dropped this tick — would cause PacketOrderI
                 if (justStoppedBlocking) return;
 
                 mc.interactionManager.attackEntity(mc.player, cachedTarget);
