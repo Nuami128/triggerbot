@@ -22,8 +22,8 @@ public class TriggerBotMod implements ClientModInitializer {
         System.out.println("TRIGGERBOT INIT");
 
         AUTO_STUN = new AutoStunModule();
-        TRIGGER = new TriggerBotModule(AUTO_STUN);
         AUTO_SPRINT = new AutoSprintModule();
+        TRIGGER = new TriggerBotModule(AUTO_STUN, AUTO_SPRINT); // pass AUTO_SPRINT
         AUTO_JUMP_RESET = new AutoJumpResetModule();
 
         MODULE_MANAGER.register(AUTO_SPRINT);
