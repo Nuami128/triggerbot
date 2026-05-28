@@ -16,34 +16,30 @@ import java.util.Optional;
 public class TriggerBotModule implements ClientModule {
 
     private final AutoStunModule autoStun;
+    private final AutoSprintModule autoSprint;
 
     private boolean enabled = false;
     private int cooldownTicks = 0;
     private int releaseDelay = 0;
     private int itemReleaseCooldown = 0;
 
-    // Damage tracking
     private float lastHealth = -1f;
     private boolean recentlyHit = false;
     private int hitCooldown = 0;
 
-    // Crit tracking
     private boolean wasAirborne = false;
     private double lastVelY = 0;
 
-    public TriggerBotModule(AutoStunModule autoStun) {
+    public TriggerBotModule(AutoStunModule autoStun, AutoSprintModule autoSprint) {
         this.autoStun = autoStun;
+        this.autoSprint = autoSprint;
     }
 
     @Override
-    public String getName() {
-        return "TriggerBot";
-    }
+    public String getName() { return "TriggerBot"; }
 
     @Override
-    public boolean isEnabled() {
-        return enabled;
-    }
+    public boolean isEnabled() { return enabled; }
 
     @Override
     public void onEnable() {
@@ -95,7 +91,6 @@ public class TriggerBotModule implements ClientModule {
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
 
-        // Track item release and hold off for 3 ticks after
         if (mc.player.isUsingItem()) {
             itemReleaseCooldown = 3;
         }
@@ -161,8 +156,8 @@ public class TriggerBotModule implements ClientModule {
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(Hand.MAIN_HAND);
-            // removed setSprinting(false) — caused Simulation flags
             cooldownTicks = 1;
+            autoSprint.onAttack(); // back off sprint for 3 ticks after attack
         }
     }
 
