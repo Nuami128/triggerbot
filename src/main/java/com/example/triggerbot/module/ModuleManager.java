@@ -13,25 +13,17 @@ public class ModuleManager {
 
     private final List<ClientModule> modules = new ArrayList<>();
 
-    // -----------------------------
-    // REGISTER MODULES
-    // -----------------------------
     public void register(ClientModule module) {
         modules.add(module);
     }
 
-    // -----------------------------
-    // MAIN TICK LOOP
-    // -----------------------------
     public void tickAll() {
-    for (ClientModule module : modules) {
-        module.onTick();
-        module.onPostMovement();
+        for (ClientModule module : modules) {
+            module.onTick();
+            module.onPostMovement();
+        }
     }
-    
-    // -----------------------------
-    // OPTIONAL HELPERS
-    // -----------------------------
+
     public void enableAll() {
         for (ClientModule module : modules) {
             module.onEnable();
