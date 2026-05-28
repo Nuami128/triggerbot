@@ -57,7 +57,6 @@ public class AutoStunModule implements ClientModule {
     @Override
     public void onTick() {}
 
-    @Override
     public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
