@@ -22,6 +22,9 @@ public class TriggerBotModule implements ClientModule {
     private int cooldownTicks = 0;
     private int releaseDelay = 0;
 
+    // queued attack target
+    private Entity pendingTarget = null;
+
     // Damage tracking
     private float lastHealth = -1f;
     private boolean recentlyHit = false;
@@ -36,48 +39,90 @@ public class TriggerBotModule implements ClientModule {
     }
 
     @Override
-    public String getName() { return "TriggerBot"; }
+    public String getName() {
+        return "TriggerBot";
+    }
 
-    public boolean isEnabled() { return enabled; }
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
 
     @Override
     public void onEnable() {
         enabled = true;
+
         lastHealth = -1f;
         recentlyHit = false;
         hitCooldown = 0;
+
         wasAirborne = false;
         lastVelY = 0;
+
+        pendingTarget = null;
     }
 
     @Override
     public void onDisable() {
         enabled = false;
+
         cooldownTicks = 0;
         releaseDelay = 0;
         lastProcessedTick = -1L;
+
         recentlyHit = false;
         hitCooldown = 0;
+
         wasAirborne = false;
         lastVelY = 0;
+
+        pendingTarget = null;
     }
 
     @Override
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
+
         if (!enabled || mc.player == null) return;
 
+        // damage tracking
         float currentHealth = mc.player.getHealth();
+
         if (lastHealth > 0 && currentHealth < lastHealth) {
             recentlyHit = true;
             hitCooldown = 12;
         }
+
         lastHealth = currentHealth;
 
-        if (hitCooldown > 0) hitCooldown--;
-        if (hitCooldown == 0) recentlyHit = false;
+        if (hitCooldown > 0) {
+            hitCooldown--;
+        }
+
+        if (hitCooldown == 0) {
+            recentlyHit = false;
+        }
+
+        // safe queued attack execution
+        if (pendingTarget != null) {
+
+            if (pendingTarget.isAlive()
+                    && !pendingTarget.isRemoved()
+                    && CombatUtil.isInReach(mc, pendingTarget)) {
+
+                mc.interactionManager.attackEntity(mc.player, pendingTarget);
+                mc.player.swingHand(Hand.MAIN_HAND);
+
+                // sprint reset
+                mc.player.setSprinting(false);
+
+                cooldownTicks = 1;
+            }
+
+            pendingTarget = null;
+        }
     }
-    
+
     public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
@@ -90,8 +135,10 @@ public class TriggerBotModule implements ClientModule {
 
         if (CombatUtil.isPlayerBusy(mc)) {
             releaseDelay = 2;
+
             wasAirborne = false;
             lastVelY = 0;
+
             return;
         }
 
@@ -101,22 +148,29 @@ public class TriggerBotModule implements ClientModule {
         }
 
         ItemStack held = mc.player.getMainHandStack();
-        if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) return;
+
+        if (!CombatUtil.isSword(held)
+                && !CombatUtil.isAxe(held)) {
+            return;
+        }
 
         double velY = mc.player.getVelocity().y;
         double velX = mc.player.getVelocity().x;
         double velZ = mc.player.getVelocity().z;
+
         boolean onGround = mc.player.isOnGround();
         boolean ascending = velY > 0;
         boolean airborne = !onGround;
         boolean sprinting = mc.player.isSprinting();
 
-        boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
+        boolean hasMovement =
+                (velX * velX + velZ * velZ) > 0.001;
 
-        // Crit requires velocity at -0.1 or below
-        boolean falling = (velY <= -0.1) || (wasAirborne && lastVelY <= -0.1);
+        boolean falling =
+                (velY <= -0.1)
+                        || (wasAirborne && lastVelY <= -0.1);
 
-        // Update tracking
+        // update tracking
         wasAirborne = airborne;
         lastVelY = velY;
 
@@ -125,48 +179,57 @@ public class TriggerBotModule implements ClientModule {
         if (onGround && !hasMovement) return;
         if (airborne && !falling) return;
 
-        // Punish crit — recently hit and airborne must have -0.1 or below velocity
-        if (recentlyHit && airborne && velY > -0.1) return;
-
-        long currentTick = mc.world.getTime();
-        if (currentTick == lastProcessedTick) return;
-        lastProcessedTick = currentTick;
+        // punish crit timing
+        if (recentlyHit
+                && airborne
+                && velY > -0.1) {
+            return;
+        }
 
         if (cooldownTicks > 0) {
             cooldownTicks--;
             return;
         }
 
-        // 0.85 for all hits
-        if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
+        // slightly safer threshold
+        if (mc.player.getAttackCooldownProgress(1.0f) < 0.7f) {
+            return;
+        }
 
         Entity target = findTarget(mc);
-        if (target == null) return;
 
+        if (target == null) {
+            return;
+        }
+
+        // auto stun handoff
         if (target instanceof PlayerEntity pe
                 && pe.isBlocking()
                 && CombatUtil.isFacingUs(mc, target)
                 && !autoStun.isEnabled()) {
+
             autoStun.onEnable();
+
             cooldownTicks = 1;
             return;
         }
 
-        mc.interactionManager.attackEntity(mc.player, target);
-        mc.player.swingHand(Hand.MAIN_HAND);
-
-        // Sprint reset after hit
-        mc.player.setSprinting(false);
-
-        cooldownTicks = 1;
+        // queue attack instead of attacking instantly
+        pendingTarget = target;
     }
 
     private Entity findTarget(MinecraftClient mc) {
+
         Vec3d eyePos = mc.player.getEyePos();
-        Vec3d look = mc.player.getRotationVec(1.0f);
-        Vec3d reachVec = eyePos.add(look.multiply(3.0));
+
+        Vec3d look =
+                mc.player.getRotationVec(1.0f);
+
+        Vec3d reachVec =
+                eyePos.add(look.multiply(3.0));
 
         for (Entity e : mc.world.getEntities()) {
+
             if (!(e instanceof LivingEntity)) continue;
             if (e == mc.player) continue;
             if (!e.isAlive()) continue;
@@ -176,9 +239,15 @@ public class TriggerBotModule implements ClientModule {
             if (!CombatUtil.isInReach(mc, e)) continue;
 
             Box box = e.getBoundingBox();
-            Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
-            if (hit.isPresent()) return e;
+
+            Optional<Vec3d> hit =
+                    box.raycast(eyePos, reachVec);
+
+            if (hit.isPresent()) {
+                return e;
+            }
         }
+
         return null;
     }
 }
