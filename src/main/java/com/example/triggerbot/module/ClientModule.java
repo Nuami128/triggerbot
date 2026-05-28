@@ -10,5 +10,7 @@ public interface ClientModule {
 
     void onTick();
 
+    void onPostMovement(); // 🔥 ADD THIS
+
     boolean isEnabled();
 }
