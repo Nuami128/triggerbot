@@ -1,15 +1,14 @@
 package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
-import com.example.triggerbot.module.ClientModule;
 import net.minecraft.client.MinecraftClient;
 
 public class AutoSprintModule extends EmptyModule {
 
-public AutoSprintModule() {
-    super("AutoSprint");
-}
-    
+    public AutoSprintModule() {
+        super("AutoSprint");
+    }
+
     @Override
     public String getName() {
         return "AutoSprint";
@@ -22,8 +21,10 @@ public AutoSprintModule() {
     public void onDisable() {}
 
     @Override
-    public void onTick() {
+    public void onTick() {}
 
+    @Override
+    public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (mc.player == null) return;
