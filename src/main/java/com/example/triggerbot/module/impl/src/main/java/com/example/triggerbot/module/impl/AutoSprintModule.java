@@ -1,5 +1,6 @@
 package com.example.triggerbot.module.EmotyModule;
 
+import com.example.triggerbot.module.EmptyModule;
 import com.example.triggerbot.module.ClientModule;
 import net.minecraft.client.MinecraftClient;
 
