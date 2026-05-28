@@ -25,7 +25,7 @@ public class AutoStunModule implements ClientModule {
     private long lastProcessedTick = -1L;
 
     private boolean wasBlocking = false;
-    private boolean wasUsingItem = false;
+    private int itemReleaseCooldown = 0;
 
     @Override
     public String getName() { return "AutoStun"; }
@@ -39,7 +39,7 @@ public class AutoStunModule implements ClientModule {
         tickCounter = 0;
         cachedTarget = null;
         wasBlocking = false;
-        wasUsingItem = false;
+        itemReleaseCooldown = 0;
     }
 
     @Override
@@ -50,7 +50,7 @@ public class AutoStunModule implements ClientModule {
         cachedTarget = null;
         lastProcessedTick = -1L;
         wasBlocking = false;
-        wasUsingItem = false;
+        itemReleaseCooldown = 0;
     }
 
     public void beginSwapBack() {
@@ -77,17 +77,19 @@ public class AutoStunModule implements ClientModule {
         if (CombatUtil.isPlayerBusy(mc)) return;
         if (mc.player.getVelocity().y > 0) return;
 
-        // Guard: skip the tick the player releases their own item use
-        boolean playerUsingItem = mc.player.isUsingItem();
-        boolean justReleasedItem = wasUsingItem && !playerUsingItem;
-        wasUsingItem = playerUsingItem;
-        if (justReleasedItem) return;
+        // Track item release and hold off for 3 ticks after
+        if (mc.player.isUsingItem()) {
+            itemReleaseCooldown = 3;
+        }
+        if (itemReleaseCooldown > 0) {
+            itemReleaseCooldown--;
+            return;
+        }
 
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
         lastProcessedTick = currentTick;
 
-        // Guard: skip the tick the target stops blocking
         boolean currentlyBlocking = cachedTarget instanceof PlayerEntity pe && pe.isBlocking();
         boolean justStoppedBlocking = wasBlocking && !currentlyBlocking;
         wasBlocking = currentlyBlocking;
@@ -192,9 +194,7 @@ public class AutoStunModule implements ClientModule {
             }
 
             case COOLDOWN -> {
-                if (tickCounter >= 10) {
-                    onDisable();
-                }
+                if (tickCounter >= 10) onDisable();
             }
         }
     }
