@@ -2,9 +2,7 @@
   "required": true,
   "package": "com.example.triggerbot.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [
-    "MixinClientPlayerEntity"
-  ],
+  "mixins": [],
   "client": [],
   "injectors": {
     "defaultRequire": 1
