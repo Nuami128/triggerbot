@@ -3,8 +3,12 @@ package com.example.triggerbot.module.impl;
 import com.example.triggerbot.module.ClientModule;
 import net.minecraft.client.MinecraftClient;
 
-public class AutoSprintModule implements ClientModule {
+public class AutoSprintModule extends EmptyModule {
 
+public AutoSprintModule() {
+    super("AutoSprint");
+}
+    
     @Override
     public String getName() {
         return "AutoSprint";
