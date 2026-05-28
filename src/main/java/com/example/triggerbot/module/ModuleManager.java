@@ -24,14 +24,11 @@ public class ModuleManager {
     // MAIN TICK LOOP
     // -----------------------------
     public void tickAll() {
-        for (ClientModule module : modules) {
-
-            if (module == null) continue;
-
-            module.onTick();
-        }
+    for (ClientModule module : modules) {
+        module.onTick();
+        module.onPostMovement();
     }
-
+    
     // -----------------------------
     // OPTIONAL HELPERS
     // -----------------------------
