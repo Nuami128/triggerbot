@@ -1,7 +1,6 @@
 package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
-import com.example.triggerbot.module.ClientModule;
 import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
@@ -16,25 +15,32 @@ import java.util.Optional;
 
 public class AutoStunModule extends EmptyModule {
 
-public AutoStunModule() {
-    super("AutoStun");
-}
-    
-    private enum State { IDLE, WAITING, SHIELD_BREAK, STUN_DELAY, STUN, SWAPPING_BACK, COOLDOWN }
+    private enum State {
+        IDLE,
+        WAITING,
+        SHIELD_BREAK,
+        STUN_DELAY,
+        STUN,
+        SWAPPING_BACK,
+        COOLDOWN
+    }
 
-    private boolean enabled = false;
     private State state = State.IDLE;
+
     private int originalSlot = -1;
     private int tickCounter = 0;
+
     private Entity cachedTarget = null;
     private long lastProcessedTick = -1L;
 
-    @Override
-    public String getName() { return "AutoStun"; }
+    public AutoStunModule() {
+        super("AutoStun");
+    }
 
     @Override
     public void onEnable() {
-        enabled = true;
+        super.onEnable();
+
         state = State.IDLE;
         tickCounter = 0;
         cachedTarget = null;
@@ -42,11 +48,21 @@ public AutoStunModule() {
 
     @Override
     public void onDisable() {
-        enabled = false;
+        super.onDisable();
+
         state = State.IDLE;
         tickCounter = 0;
         cachedTarget = null;
         lastProcessedTick = -1L;
+    }
+
+    public void beginSwapBack() {
+        if (state != State.SWAPPING_BACK
+                && state != State.COOLDOWN) {
+
+            tickCounter = 0;
+            state = State.SWAPPING_BACK;
+        }
     }
 
     @Override
@@ -54,19 +70,28 @@ public AutoStunModule() {
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        if (!enabled) return;
+        if (!isEnabled()) return;
         if (mc.player == null || mc.world == null) return;
         if (mc.currentScreen != null) return;
         if (mc.player.isDead()) return;
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
 
-        if (CombatUtil.isPlayerBusy(mc)) return;
+        if (CombatUtil.isPlayerBusy(mc)) {
+            return;
+        }
 
-        if (mc.player.getVelocity().y > 0) return;
+        // Don't fire while ascending
+        if (mc.player.getVelocity().y > 0) {
+            return;
+        }
 
         long currentTick = mc.world.getTime();
-        if (currentTick == lastProcessedTick) return;
+
+        if (currentTick == lastProcessedTick) {
+            return;
+        }
+
         lastProcessedTick = currentTick;
 
         tickCounter++;
@@ -74,21 +99,29 @@ public AutoStunModule() {
         switch (state) {
 
             case IDLE -> {
-                if (mc.player.getAttackCooldownProgress(1.0f) < 1.0f) return;
+
+                if (mc.player.getAttackCooldownProgress(1.0f) < 1.0f) {
+                    return;
+                }
 
                 ItemStack held = mc.player.getMainHandStack();
-                if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) {
+
+                if (!CombatUtil.isSword(held)
+                        && !CombatUtil.isAxe(held)) {
+
                     onDisable();
                     return;
                 }
 
                 Entity target = findShieldingTarget(mc);
+
                 if (target == null) {
                     onDisable();
                     return;
                 }
 
                 int axeSlot = findAxe(mc);
+
                 if (axeSlot == -1) {
                     onDisable();
                     return;
@@ -105,18 +138,21 @@ public AutoStunModule() {
                 cachedTarget = target;
                 originalSlot = currentSlot;
 
-                mc.player.getInventory().setSelectedSlot(axeSlot);
+                if (originalSlot != axeSlot) {
+                    mc.player.getInventory().setSelectedSlot(axeSlot);
+                }
 
                 tickCounter = 0;
                 state = State.WAITING;
             }
 
             case WAITING -> {
+
                 if (tickCounter < 1) return;
 
                 if (!isTargetValid(mc)) {
-                    state = State.SWAPPING_BACK;
                     tickCounter = 0;
+                    state = State.SWAPPING_BACK;
                     return;
                 }
 
@@ -128,17 +164,25 @@ public AutoStunModule() {
             }
 
             case SHIELD_BREAK -> {
+
+                if (tickCounter < 1) return;
+
                 tickCounter = 0;
                 state = State.STUN_DELAY;
             }
 
             case STUN_DELAY -> {
+
+                if (tickCounter < 1) return;
+
                 tickCounter = 0;
                 state = State.STUN;
             }
 
             case STUN -> {
+
                 if (!isTargetValid(mc)) {
+                    tickCounter = 0;
                     state = State.SWAPPING_BACK;
                     return;
                 }
@@ -151,9 +195,11 @@ public AutoStunModule() {
             }
 
             case SWAPPING_BACK -> {
+
                 if (tickCounter < 2) return;
 
                 int current = mc.player.getInventory().getSelectedSlot();
+
                 if (originalSlot != -1 && current != originalSlot) {
                     mc.player.getInventory().setSelectedSlot(originalSlot);
                 }
@@ -163,6 +209,7 @@ public AutoStunModule() {
             }
 
             case COOLDOWN -> {
+
                 if (tickCounter >= 10) {
                     onDisable();
                 }
@@ -171,23 +218,28 @@ public AutoStunModule() {
     }
 
     private boolean isTargetValid(MinecraftClient mc) {
+
         if (cachedTarget == null) return false;
         if (!cachedTarget.isAlive()) return false;
-        if (cachedTarget.isRemoved()) return false;
+        if (!cachedTarget.isRemoved()) return false;
         if (!CombatUtil.isInReach(mc, cachedTarget)) return false;
+
         return true;
     }
 
     private Entity findShieldingTarget(MinecraftClient mc) {
+
         Vec3d eyePos = mc.player.getEyePos();
         Vec3d look = mc.player.getRotationVec(1.0f);
         Vec3d reachVec = eyePos.add(look.multiply(3.0));
 
         for (Entity e : mc.world.getEntities()) {
+
             if (!(e instanceof PlayerEntity pe)) continue;
             if (e == mc.player) continue;
             if (!e.isAlive()) continue;
             if (e.isRemoved()) continue;
+            if (e.isSpectator()) continue;
 
             if (!CombatUtil.isInReach(mc, e)) continue;
             if (!pe.isBlocking()) continue;
@@ -195,16 +247,27 @@ public AutoStunModule() {
 
             Box box = e.getBoundingBox();
             Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
-            if (hit.isPresent()) return e;
+
+            if (hit.isPresent()) {
+                return e;
+            }
         }
+
         return null;
     }
 
     private int findAxe(MinecraftClient mc) {
+
         for (int i = 0; i < 9; i++) {
-            if (mc.player.getInventory().getStack(i).getItem() instanceof AxeItem)
+
+            if (mc.player.getInventory()
+                    .getStack(i)
+                    .getItem() instanceof AxeItem) {
+
                 return i;
+            }
         }
+
         return -1;
     }
 }
