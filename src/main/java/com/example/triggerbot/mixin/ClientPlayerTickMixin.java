@@ -1,7 +1,6 @@
 package com.example.triggerbot.mixin;
 
-import com.example.triggerbot.module.impl.TriggerBotModule;
-import com.example.triggerbot.ModuleManager; // adjust to wherever you access your modules
+import com.example.triggerbot.TriggerBotMod;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -26,12 +25,8 @@ public class ClientPlayerTickMixin {
         wasHurt = hurtNow;
     }
 
-    // This is the key fix — fires AFTER movement packets are sent each tick
     @Inject(method = "sendMovementPackets", at = @At("TAIL"))
     private void onPostMovement(CallbackInfo ci) {
-        TriggerBotModule triggerBot = ModuleManager.getInstance().getTriggerBot();
-        if (triggerBot != null) {
-            triggerBot.onPostMovement();
-        }
+        TriggerBotMod.getModuleManager().postMovementAll();
     }
 }
