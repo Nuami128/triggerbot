@@ -21,10 +21,7 @@ public class AutoSprintModule extends EmptyModule {
     public void onDisable() {}
 
     @Override
-    public void onTick() {}
-
-    @Override
-    public void onPostMovement() {
+    public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (mc.player == null) return;
@@ -34,8 +31,9 @@ public class AutoSprintModule extends EmptyModule {
         if (mc.player.isTouchingWater()) return;
         if (!mc.options.forwardKey.isPressed()) return;
 
-        if (!mc.player.isSprinting()) {
-            mc.player.setSprinting(true);
-        }
+        mc.player.input.pressSprint = true;
     }
+
+    @Override
+    public void onPostMovement() {}
 }
