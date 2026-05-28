@@ -37,7 +37,6 @@ public class TriggerBotMod implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             MODULE_MANAGER.tickAll();
-            MODULE_MANAGER.postMovementAll();
         });
     }
 
