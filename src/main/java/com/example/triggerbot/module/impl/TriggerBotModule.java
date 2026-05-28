@@ -85,6 +85,60 @@ public class TriggerBotModule implements ClientModule {
 
         if (!enabled || mc.player == null) return;
 
+        if (mc.world == null || mc.interactionManager == null || mc.getNetworkHandler() == null) return;
+
+if (CombatUtil.isPlayerBusy(mc)) {
+    releaseDelay = 2;
+    return;
+}
+
+if (releaseDelay > 0) {
+    releaseDelay--;
+    return;
+}
+
+ItemStack held = mc.player.getMainHandStack();
+if (!CombatUtil.isSword(held) && !CombatUtil.isAxe(held)) return;
+
+double velY = mc.player.getVelocity().y;
+double velX = mc.player.getVelocity().x;
+double velZ = mc.player.getVelocity().z;
+
+boolean onGround = mc.player.isOnGround();
+boolean ascending = velY > 0;
+boolean airborne = !onGround;
+boolean sprinting = mc.player.isSprinting();
+
+boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
+boolean falling = (velY <= -0.1) || (wasAirborne && lastVelY <= -0.1);
+
+if (ascending) return;
+if (onGround && !sprinting) return;
+if (onGround && !hasMovement) return;
+if (airborne && !falling) return;
+
+if (cooldownTicks > 0) {
+    cooldownTicks--;
+    return;
+}
+
+if (mc.player.getAttackCooldownProgress(1.0f) < 0.7f) return;
+
+Entity target = findTarget(mc);
+if (target == null) return;
+
+if (target instanceof PlayerEntity pe
+        && pe.isBlocking()
+        && CombatUtil.isFacingUs(mc, target)
+        && !autoStun.isEnabled()) {
+
+    autoStun.onEnable();
+    cooldownTicks = 1;
+    return;
+}
+
+pendingTarget = target;
+
         // damage tracking
         float currentHealth = mc.player.getHealth();
 
@@ -124,23 +178,14 @@ public class TriggerBotModule implements ClientModule {
     }
 
     public void onPostMovement() {
-        MinecraftClient mc = MinecraftClient.getInstance();
+    MinecraftClient mc = MinecraftClient.getInstance();
 
-        if (!enabled) return;
-        if (mc.player == null || mc.world == null) return;
-        if (mc.currentScreen != null) return;
-        if (mc.player.isDead()) return;
-        if (mc.interactionManager == null) return;
-        if (mc.getNetworkHandler() == null) return;
+    if (!enabled) return;
+    if (mc.player == null) return;
 
-        if (CombatUtil.isPlayerBusy(mc)) {
-            releaseDelay = 2;
-
-            wasAirborne = false;
-            lastVelY = 0;
-
-            return;
-        }
+    wasAirborne = !mc.player.isOnGround();
+    lastVelY = mc.player.getVelocity().y;
+    }
 
         if (releaseDelay > 0) {
             releaseDelay--;
