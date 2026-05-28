@@ -31,7 +31,7 @@ public class AutoSprintModule extends EmptyModule {
         if (mc.player.isTouchingWater()) return;
         if (!mc.options.forwardKey.isPressed()) return;
 
-        mc.player.input.pressSprint = true;
+        mc.player.setSprinting(true);
     }
 
     @Override
