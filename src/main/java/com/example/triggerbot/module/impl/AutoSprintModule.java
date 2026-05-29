@@ -28,7 +28,7 @@ public class AutoSprintModule extends EmptyModule {
     }
 
     public void onAttack() {
-        attackCooldown = 2;
+        attackCooldown = 3;
     }
 
     private boolean shouldSprint(MinecraftClient mc) {
