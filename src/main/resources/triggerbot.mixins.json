@@ -5,8 +5,7 @@
   "mixins": [],
   "client": [
     "ClientPlayerTickMixin",
-    "ClientPlayerEntityInvoker",
-    "MinecraftClientInvoker"
+    "ClientPlayerEntityInvoker"
   ],
   "injectors": {
     "defaultRequire": 1
