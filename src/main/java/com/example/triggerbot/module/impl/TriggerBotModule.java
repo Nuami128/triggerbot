@@ -157,7 +157,8 @@ public class TriggerBotModule implements ClientModule {
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(Hand.MAIN_HAND);
             cooldownTicks = 1;
-            autoSprint.onAttack(); // back off sprint for 3 ticks after attack
+            autoSprint.onAttack();
+            mc.player.networkHandler.sendMovementPackets();
         }
     }
 
