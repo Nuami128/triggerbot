@@ -154,11 +154,10 @@ public class TriggerBotModule implements ClientModule {
         }
 
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            mc.player.resetAttackCooldown();
-            mc.interactionManager.attackEntity(mc.player, target);
-            mc.player.swingHand(Hand.MAIN_HAND);
-            cooldownTicks = 1;
-            autoSprint.onAttack();
+    mc.interactionManager.attackEntity(mc.player, target);
+    mc.player.swingHand(Hand.MAIN_HAND);
+    cooldownTicks = 1;
+    autoSprint.onAttack();
         }
     }
 
