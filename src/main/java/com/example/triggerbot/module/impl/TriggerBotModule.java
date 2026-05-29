@@ -154,9 +154,9 @@ public class TriggerBotModule implements ClientModule {
         }
 
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            mc.doAttack();
-            cooldownTicks = 1;
-            autoSprint.onAttack();
+    ((MinecraftClientInvoker) mc).invokeDoAttack();
+    cooldownTicks = 1;
+    autoSprint.onAttack();
         }
     }
 
