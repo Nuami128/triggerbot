@@ -1,6 +1,5 @@
 package com.example.triggerbot.module.impl;
 
-import com.example.triggerbot.mixin.MinecraftClientInvoker;
 import com.example.triggerbot.module.ClientModule;
 import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
@@ -8,6 +7,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
@@ -154,11 +154,11 @@ public class TriggerBotModule implements ClientModule {
         }
 
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-    mc.player.resetLastAttackedTicks();
-    mc.interactionManager.attackEntity(mc.player, target);
-    mc.player.swingHand(Hand.MAIN_HAND);
-    cooldownTicks = 1;
-    autoSprint.onAttack();
+            mc.player.resetAttackCooldown();
+            mc.interactionManager.attackEntity(mc.player, target);
+            mc.player.swingHand(Hand.MAIN_HAND);
+            cooldownTicks = 1;
+            autoSprint.onAttack();
         }
     }
 
