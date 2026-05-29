@@ -1,5 +1,6 @@
 package com.example.triggerbot.module.impl;
 
+import com.example.triggerbot.mixin.ClientPlayerEntityInvoker;
 import com.example.triggerbot.module.ClientModule;
 import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
@@ -158,6 +159,7 @@ public class TriggerBotModule implements ClientModule {
             mc.player.swingHand(Hand.MAIN_HAND);
             cooldownTicks = 1;
             autoSprint.onAttack();
+            ((ClientPlayerEntityInvoker) mc.player).invokeSendMovementPackets();
         }
     }
 
