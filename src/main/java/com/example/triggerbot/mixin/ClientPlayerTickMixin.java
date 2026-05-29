@@ -14,6 +14,11 @@ public class ClientPlayerTickMixin {
     private boolean wasHurt = false;
 
     @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickStart(CallbackInfo ci) {
+        TriggerBotMod.getModuleManager().postMovementAll();
+    }
+
+    @Inject(method = "tick", at = @At("HEAD"))
     private void onTick(CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) return;
@@ -23,10 +28,5 @@ public class ClientPlayerTickMixin {
             System.out.println("[TriggerBot] DAMAGE DETECTED");
         }
         wasHurt = hurtNow;
-    }
-
-    @Inject(method = "tickMovement", at = @At("TAIL"))
-    private void onPostMovement(CallbackInfo ci) {
-        TriggerBotMod.getModuleManager().postMovementAll();
     }
 }
