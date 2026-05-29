@@ -19,6 +19,7 @@ public class TriggerBotModule implements ClientModule {
     private final AutoSprintModule autoSprint;
 
     private boolean enabled = false;
+    private long lastProcessedTick = -1L;
     private int cooldownTicks = 0;
     private int releaseDelay = 0;
     private int itemReleaseCooldown = 0;
@@ -29,9 +30,6 @@ public class TriggerBotModule implements ClientModule {
 
     private boolean wasAirborne = false;
     private double lastVelY = 0;
-
-    private boolean pendingAttack = false;
-    private Entity pendingTarget = null;
 
     public TriggerBotModule(AutoStunModule autoStun, AutoSprintModule autoSprint) {
         this.autoStun = autoStun;
@@ -53,8 +51,7 @@ public class TriggerBotModule implements ClientModule {
         wasAirborne = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
-        pendingAttack = false;
-        pendingTarget = null;
+        lastProcessedTick = -1L;
     }
 
     @Override
@@ -62,13 +59,12 @@ public class TriggerBotModule implements ClientModule {
         enabled = false;
         cooldownTicks = 0;
         releaseDelay = 0;
+        lastProcessedTick = -1L;
         recentlyHit = false;
         hitCooldown = 0;
         wasAirborne = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
-        pendingAttack = false;
-        pendingTarget = null;
     }
 
     @Override
@@ -76,21 +72,6 @@ public class TriggerBotModule implements ClientModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (!enabled || mc.player == null) return;
 
-        // Fire queued attack from previous tick
-        // At this point sprint=false has already gone out in last tick's movement packet
-        if (pendingAttack && pendingTarget != null) {
-            pendingAttack = false;
-            if (pendingTarget.isAlive()
-                    && !pendingTarget.isRemoved()
-                    && CombatUtil.isInReach(mc, pendingTarget)) {
-                mc.interactionManager.attackEntity(mc.player, pendingTarget);
-                mc.player.swingHand(Hand.MAIN_HAND);
-                autoSprint.onAttack();
-            }
-            pendingTarget = null;
-        }
-
-        // Damage tracking
         float currentHealth = mc.player.getHealth();
         if (lastHealth > 0 && currentHealth < lastHealth) {
             recentlyHit = true;
@@ -156,12 +137,16 @@ public class TriggerBotModule implements ClientModule {
         if (airborne && !falling) return;
         if (recentlyHit && airborne && velY > -0.1) return;
 
+        long currentTick = mc.world.getTime();
+        if (currentTick == lastProcessedTick) return;
+        lastProcessedTick = currentTick;
+
         if (cooldownTicks > 0) {
             cooldownTicks--;
             return;
         }
 
-        if (mc.player.getAttackCooldownProgress(1.0f) < 0.7f) return;
+        if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
 
         Entity target = findTarget(mc);
         if (target == null) return;
@@ -176,11 +161,11 @@ public class TriggerBotModule implements ClientModule {
         }
 
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            // Queue attack for next tick — sprint=false goes out in this tick's movement packet
+            mc.interactionManager.attackEntity(mc.player, target);
+            mc.player.swingHand(Hand.MAIN_HAND);
             mc.player.setSprinting(false);
-            pendingAttack = true;
-            pendingTarget = target;
             cooldownTicks = 1;
+            autoSprint.onAttack();
         }
     }
 
