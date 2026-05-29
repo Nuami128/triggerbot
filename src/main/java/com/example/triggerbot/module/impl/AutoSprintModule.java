@@ -36,6 +36,7 @@ public class AutoSprintModule extends EmptyModule {
         if (mc.player.isTouchingWater()) return;
         if (mc.player.getHungerManager().getFoodLevel() <= 6) return;
         if (!mc.options.forwardKey.isPressed()) return;
+        if (mc.player.getAttackCooldownProgress(0f) < 1.0f) return;
 
         if (attackCooldown > 0) {
             attackCooldown--;
