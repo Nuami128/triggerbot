@@ -1,5 +1,6 @@
 package com.example.triggerbot.module.impl;
 
+import com.example.triggerbot.mixin.MinecraftClientInvoker;
 import com.example.triggerbot.module.ClientModule;
 import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
