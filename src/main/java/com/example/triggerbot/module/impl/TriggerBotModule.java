@@ -158,7 +158,6 @@ public class TriggerBotModule implements ClientModule {
             mc.player.swingHand(Hand.MAIN_HAND);
             cooldownTicks = 1;
             autoSprint.onAttack();
-            ((net.minecraft.client.network.ClientPlayerEntity) mc.player).sendMovementPackets();
         }
     }
 
