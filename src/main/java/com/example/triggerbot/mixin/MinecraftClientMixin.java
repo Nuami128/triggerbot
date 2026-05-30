@@ -14,6 +14,7 @@ public class MinecraftClientMixin {
     private void onTick(CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.world == null) return;
+        System.out.println("[MCMixin] tick firing");
         TriggerBotMod.getModuleManager().jumpResetAll();
     }
 }
