@@ -5,36 +5,32 @@ import net.minecraft.client.MinecraftClient;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private int cooldown = 0;
-
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
 
     @Override
-    public void onTick() {
-        if (cooldown > 0) cooldown--;
-    }
+    public void onTick() {}
 
     @Override
-    public void onDamage() {
+    public void onJumpReset() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
-        if (cooldown > 0) return;
+        if (mc.currentScreen != null) return;
+        if (mc.player.isUsingItem()) return;
+        if (mc.player.hurtTime == 0) return;
+        if (mc.player.hurtTime == mc.player.maxHurtTime) return;
+        if (!mc.player.isOnGround()) return;
 
-        mc.execute(() -> {
-            if (mc.player == null) return;
-            if (mc.player.isOnGround()) {
-                mc.player.jump();
-                cooldown = 10;
-                System.out.println("[AutoJR] JUMP FIRED");
-            }
-        });
+        if (mc.player.hurtTime == 9) {
+            mc.player.jump();
+            System.out.println("[AutoJR] JUMP FIRED");
+        }
     }
-    
-    @Override
-    public void onJumpReset() {}
 
     @Override
     public void onPostMovement() {}
+
+    @Override
+    public void onDamage() {}
 }
