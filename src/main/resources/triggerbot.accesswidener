@@ -1,5 +1,2 @@
 accessWidener v2 named
 
-accessible field net/minecraft/client/input/Input jumping Z
-accessible field net/minecraft/client/input/Input movementForward F
-accessible field net/minecraft/client/input/Input movementSideways F
