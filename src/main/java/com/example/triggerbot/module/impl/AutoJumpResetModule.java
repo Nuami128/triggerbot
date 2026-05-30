@@ -8,7 +8,6 @@ public class AutoJumpResetModule extends EmptyModule {
     private int lastHurtTime = 0;
     private int hurtLockTicks = 0;
     private boolean shouldJump = false;
-    private boolean releaseJump = false;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -34,20 +33,12 @@ public class AutoJumpResetModule extends EmptyModule {
     @Override
     public void onJumpReset() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
-
-        if (releaseJump) {
-            mc.player.input.jumping = false;
-            releaseJump = false;
-        }
+        if (mc == null || mc.player == null || mc.world == null) return;
 
         if (!shouldJump) return;
         shouldJump = false;
 
-        if (mc.world == null) return;
-
-        mc.player.input.jumping = true;
-        releaseJump = true;
+        mc.player.jump();
         System.out.println("[AutoJR] JUMP FIRED");
     }
 
