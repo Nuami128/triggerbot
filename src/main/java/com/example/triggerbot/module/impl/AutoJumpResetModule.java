@@ -9,6 +9,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
     private int lastHurtTime = 0;
     private int hurtLockTicks = 0;
+    private boolean shouldJump = false;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -25,23 +26,31 @@ public class AutoJumpResetModule extends EmptyModule {
 
         if (hurt > lastHurtTime && hurt >= 9 && hurtLockTicks == 0) {
             hurtLockTicks = 10;
-
-            if (mc.player.isOnGround()
-                    && !playerWithinRange(mc, 2.5)
-                    && playerWithinRange(mc, 4.0)
-                    && mc.targetedEntity == null) {
-                mc.player.jump();
-                System.out.println("[AutoJR] JUMP FIRED");
-            } else {
-                System.out.println("[AutoJR] SKIPPED"
-                    + " onGround=" + mc.player.isOnGround()
-                    + " noClose=" + !playerWithinRange(mc, 2.5)
-                    + " inRange=" + playerWithinRange(mc, 4.0)
-                    + " notTargeting=" + (mc.targetedEntity == null));
-            }
+            shouldJump = true;
         }
 
         lastHurtTime = hurt;
+    }
+
+    @Override
+    public void onJumpReset() {
+        if (!shouldJump) return;
+        shouldJump = false;
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null || mc.world == null) return;
+
+        if (!playerWithinRange(mc, 2.5)
+                && playerWithinRange(mc, 4.0)
+                && mc.targetedEntity == null) {
+            mc.player.jump();
+            System.out.println("[AutoJR] JUMP FIRED");
+        } else {
+            System.out.println("[AutoJR] SKIPPED"
+                + " noClose=" + !playerWithinRange(mc, 2.5)
+                + " inRange=" + playerWithinRange(mc, 4.0)
+                + " notTargeting=" + (mc.targetedEntity == null));
+        }
     }
 
     private boolean playerWithinRange(MinecraftClient mc, double range) {
