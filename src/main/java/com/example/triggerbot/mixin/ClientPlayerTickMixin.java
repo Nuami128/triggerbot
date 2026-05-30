@@ -13,25 +13,25 @@ public class ClientPlayerTickMixin {
 
     private boolean wasHurt = false;
 
+    // 1. POST MOVEMENT: Kept at tick HEAD to preserve your custom strafe/targeting profiles
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTickStart(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 
-    // TAIL window handles our safe jump reset input checks
-    @Inject(method = "tickMovement", at = @At("TAIL"))
-    private void onTickMovementTail(CallbackInfo ci) {
+    // 2. JUMP RESET: Moved to HEAD of tickMovement so the engine catches our simulated keypress instantly
+    @Inject(method = "tickMovement", at = @At("HEAD"))
+    private void onTickMovementHead(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().jumpResetAll();
     }
 
+    // 3. AUTO-RELEASE TIMER: Runs at the end of the tick loop to ensure the key isn't stuck down
     @Inject(method = "tick", at = @At("TAIL"))
     private void onTickEnd(CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        // AUTOMATED RE-VALIDATION: If the jump reset pressed the spacebar, 
-        // release it immediately once the player leaves the ground.
-        // This ensures the physics engine registers a legal vanilla keystroke length!
+        // If the module tapped space, release it on the subsequent frame to mimic a real finger lift
         if (mc.options.jumpKey.isPressed() && !mc.player.isOnGround()) {
             mc.options.jumpKey.setPressed(false);
         }
@@ -40,7 +40,7 @@ public class ClientPlayerTickMixin {
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTickDebug(CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return;
+        if (mc == null || mc.player == null) return;
 
         boolean hurtNow = mc.player.hurtTime > 0;
         if (hurtNow && !wasHurt) {
