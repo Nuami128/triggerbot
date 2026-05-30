@@ -28,6 +28,9 @@ public class AutoStunModule implements ClientModule {
     private int itemReleaseCooldown = 0;
 
     @Override
+    public void onJumpReset() {}
+    
+    @Override
     public String getName() { return "AutoStun"; }
 
     public boolean isEnabled() { return enabled; }
