@@ -31,10 +31,6 @@ public class AutoJumpResetModule extends EmptyModule {
             }
         });
     }
-
-if (packet.getEntity(mc.world) == mc.player) {
-    System.out.println("[Network] Status received: " + packet.getStatus());
-}
     
     @Override
     public void onJumpReset() {}
