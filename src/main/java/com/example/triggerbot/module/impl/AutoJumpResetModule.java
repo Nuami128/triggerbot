@@ -6,7 +6,7 @@ import net.minecraft.client.MinecraftClient;
 public class AutoJumpResetModule extends EmptyModule {
 
     private int lastHurtTime = 0;
-    private int spacebarHoldTimer = 0;
+    private int jumpTicks = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -16,32 +16,27 @@ public class AutoJumpResetModule extends EmptyModule {
     public void onJumpReset() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
-
-        // 1. Hardware Release Emulation: Simulates lifting your finger off Space
-        if (spacebarHoldTimer > 0) {
-            spacebarHoldTimer--;
-            if (spacebarHoldTimer == 0) {
-                mc.options.jumpKey.setPressed(false);
-                System.out.println("[AutoJR] Spacebar Released.");
-            }
-        }
-
         if (mc.currentScreen != null || mc.player.isUsingItem()) return;
 
         int currentHurtTime = mc.player.hurtTime;
 
-        // 2. Rising-Edge Interceptor: Catches the exact frame damage registers
-        if (currentHurtTime > lastHurtTime && currentHurtTime > 0) {
-            if (mc.player.isOnGround()) {
-                
-                // 3. PURE SPACEBAR INPUT: We override the hardware flag directly.
-                // Because this executes at post-tick TAIL, the client engine is forced 
-                // to interpret this as a genuine user keystroke on the next physics frame.
-                mc.options.jumpKey.setPressed(true);
-                spacebarHoldTimer = 2; // Hold down across the tick boundary to ensure it executes
-                
-                System.out.println("[AutoJR] Simulated Spacebar Pressed Successfully!");
-            }
+        // 1. Your Rising Edge Interceptor: Catches the exact millisecond damage transitions from 0
+        if (currentHurtTime > 0 && lastHurtTime == 0) {
+            jumpTicks = 2; // Queue a persistent 2-frame hardware hold
+        }
+
+        // 2. The Step-Down Key Injection Matrix
+        if (jumpTicks > 0) {
+            // Simulate a genuine, un-erasable vanilla Spacebar press
+            mc.options.jumpKey.setPressed(true);
+            
+            // Explicitly sync the engine's internal entity flag to match the keyboard state
+            mc.player.setJumping(true); 
+            
+            jumpTicks--;
+        } else {
+            // Automatically clear the key state once the execution window concludes
+            mc.options.jumpKey.setPressed(false);
         }
 
         lastHurtTime = currentHurtTime;
