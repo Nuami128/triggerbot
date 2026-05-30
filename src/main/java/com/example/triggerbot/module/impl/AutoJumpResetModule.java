@@ -21,17 +21,14 @@ public class AutoJumpResetModule extends EmptyModule {
         int currentHurtTime = mc.player.hurtTime;
 
         // 1. Your Rising Edge Interceptor: Catches the exact millisecond damage transitions from 0
-        if (currentHurtTime > 0 && lastHurtTime == 0) {
-            jumpTicks = 2; // Queue a persistent 2-frame hardware hold
+        if (currentHurtTime > lastHurtTime) {
+    jumpTicks = 2;
         }
 
         // 2. The Step-Down Key Injection Matrix
         if (jumpTicks > 0) {
             // Simulate a genuine, un-erasable vanilla Spacebar press
-            mc.options.jumpKey.setPressed(true);
-            
-            // Explicitly sync the engine's internal entity flag to match the keyboard state
-            mc.player.setJumping(true); 
+            mc.options.jumpKey.setPressed(true); 
             
             jumpTicks--;
         } else {
