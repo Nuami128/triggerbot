@@ -18,7 +18,7 @@ public class ClientPlayerTickMixin {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 
-    @Inject(method = "tick", at = @At("HEAD"))
+    @Inject(method = "tick", at = @At("TAIL"))
     private void onTickJumpReset(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().jumpResetAll();
     }
