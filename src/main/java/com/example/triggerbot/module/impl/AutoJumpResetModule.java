@@ -7,7 +7,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
     private int lastHurtTime = 0;
     private boolean shouldJump = false;
-    private int releaseTimer = 0;
+    private int pressHoldTicks = 0; // Tracks how long the spacebar stays held down
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -18,24 +18,25 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        // Automatically unpress the key next tick so the spacebar isn't stuck "down"
-        if (releaseTimer > 0) {
-            releaseTimer--;
-            if (releaseTimer == 0) {
-                mc.options.jumpKey.setPressed(false);
+        // 1. Keep the key held down across ticks to match true human hardware timing
+        if (pressHoldTicks > 0) {
+            pressHoldTicks--;
+            if (pressHoldTicks == 0) {
+                mc.options.jumpKey.setPressed(false); // Finally release the spacebar
             }
         }
 
         int hurtTime = mc.player.hurtTime;
 
-        // Rising edge check
+        // 2. Persistent state tracking for damage onset
         if (hurtTime > lastHurtTime && hurtTime > 0) {
             if (mc.player.isOnGround()) {
                 shouldJump = true;
             }
         }
 
-        if (hurtTime == 0 || !mc.player.isOnGround()) {
+        // Safety cleanup if the damage tracking resets completely
+        if (hurtTime == 0) {
             shouldJump = false;
         }
 
@@ -48,19 +49,18 @@ public class AutoJumpResetModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (mc.currentScreen != null || mc.player.isUsingItem()) return;
 
+        // 3. Force the physical hold window
         if (shouldJump && mc.player.isOnGround()) {
-            // If Claude's suggestion of mc.player.jump() still flags Ground Spoof/Simulation on your server,
-            // use this hardware key spoofing block instead. It compiles cleanly on 1.21.11 Yarn:
             mc.options.jumpKey.setPressed(true);
-            releaseTimer = 1; 
+            pressHoldTicks = 2; // Hold it down for 2 ticks to guarantee the physics loop catches it
             
-            shouldJump = false;
-            System.out.println("[AutoJR] Safe Key-Spoofed Jump Reset Fired");
+            shouldJump = false; // Consume the trigger flag
+            System.out.println("[AutoJR] Persistent Jump Input Injected!");
         }
     }
 
     @Override
     public void onPostMovement() {
-        // Keeps running safely at tick HEAD via your mixin setup
+        // Safe to use for your combat strafes at tick HEAD
     }
 }
