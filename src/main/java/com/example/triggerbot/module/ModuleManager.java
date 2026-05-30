@@ -17,7 +17,6 @@ public class ModuleManager {
         modules.add(module);
     }
 
-    // Called every tick
     public void tickAll() {
         for (ClientModule module : modules) {
             if (module == null) continue;
@@ -25,11 +24,17 @@ public class ModuleManager {
         }
     }
 
-    // IMPORTANT: this is what you were missing
     public void postMovementAll() {
         for (ClientModule module : modules) {
             if (module == null) continue;
             module.onPostMovement();
+        }
+    }
+
+    public void jumpResetAll() {
+        for (ClientModule module : modules) {
+            if (module == null) continue;
+            module.onJumpReset();
         }
     }
 
