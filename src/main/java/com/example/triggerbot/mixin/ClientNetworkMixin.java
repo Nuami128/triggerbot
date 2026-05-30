@@ -21,7 +21,7 @@ public class ClientNetworkMixin {
             System.out.println("[Network] Status received: " + packet.getStatus());
         }
 
-        if (packet.getEntity(mc.world) == mc.player && packet.getStatus() == 2) {
+        if (packet.getEntity(mc.world) == mc.player && packet.getStatus() == 28) {
             TriggerBotMod.getModuleManager().onDamageAll();
         }
     }
