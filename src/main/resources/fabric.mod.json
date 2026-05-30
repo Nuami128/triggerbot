@@ -17,6 +17,7 @@
   },
   "mixins": [
     "triggerbot.mixins.json"
+    "ClientNetworkMixin"
   ],
   "depends": {
     "fabricloader": ">=0.16.9",
