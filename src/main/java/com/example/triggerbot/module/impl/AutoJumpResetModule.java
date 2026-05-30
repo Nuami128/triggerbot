@@ -33,7 +33,11 @@ public class AutoJumpResetModule extends EmptyModule {
                 mc.player.jump();
                 System.out.println("[AutoJR] JUMP FIRED");
             } else {
-                System.out.println("[AutoJR] SKIPPED");
+                System.out.println("[AutoJR] SKIPPED"
+                    + " onGround=" + mc.player.isOnGround()
+                    + " noClose=" + !playerWithinRange(mc, 2.5)
+                    + " inRange=" + playerWithinRange(mc, 4.0)
+                    + " notTargeting=" + (mc.targetedEntity == null));
             }
         }
 
