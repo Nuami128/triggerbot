@@ -13,18 +13,20 @@ public class ClientPlayerTickMixin {
 
     private boolean wasHurt = false;
 
+    // Preserved at HEAD to prevent your Post flags from returning
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTickStart(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 
-    @Inject(method = "tick", at = @At("HEAD"))
-    private void onTickJumpReset(CallbackInfo ci) {
+    // Unambiguous and bulletproof: Injecting directly after movement keys are mapped
+    @Inject(method = "tickMovement", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerEntity;hasMovementInput()Z"))
+    private void onTickMovementAfterInput(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().jumpResetAll();
     }
 
     @Inject(method = "tick", at = @At("HEAD"))
-    private void onTick(CallbackInfo ci) {
+    private void onTickDebug(CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) return;
 
