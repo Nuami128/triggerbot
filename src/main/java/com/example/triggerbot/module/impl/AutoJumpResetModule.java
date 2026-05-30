@@ -10,6 +10,7 @@ public class AutoJumpResetModule extends EmptyModule {
     private int lastHurtTime = 0;
     private int hurtLockTicks = 0;
     private boolean shouldJump = false;
+    private boolean releaseJump = false;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -20,36 +21,40 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null || mc.world == null) return;
 
-        if (hurtLockTicks > 0) hurtLockTicks--;
-
         int hurt = mc.player.hurtTime;
 
         if (hurt > lastHurtTime && hurt >= 9 && hurtLockTicks == 0) {
-            hurtLockTicks = 10;
+            hurtLockTicks = 20;
             shouldJump = true;
         }
+
+        if (hurtLockTicks > 0) hurtLockTicks--;
 
         lastHurtTime = hurt;
     }
 
     @Override
     public void onJumpReset() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+
+        // Release jump key from previous tick
+        if (releaseJump) {
+            mc.options.jumpKey.setPressed(false);
+            releaseJump = false;
+        }
+
         if (!shouldJump) return;
         shouldJump = false;
 
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null || mc.world == null) return;
+        if (mc.world == null) return;
 
-        if (!playerWithinRange(mc, 2.5)
-                && playerWithinRange(mc, 4.0)
-                && mc.targetedEntity == null) {
-            mc.player.jump();
+        if (playerWithinRange(mc, 4.0)) {
+            mc.options.jumpKey.setPressed(true);
+            releaseJump = true;
             System.out.println("[AutoJR] JUMP FIRED");
         } else {
-            System.out.println("[AutoJR] SKIPPED"
-                + " noClose=" + !playerWithinRange(mc, 2.5)
-                + " inRange=" + playerWithinRange(mc, 4.0)
-                + " notTargeting=" + (mc.targetedEntity == null));
+            System.out.println("[AutoJR] SKIPPED - no player in range");
         }
     }
 
