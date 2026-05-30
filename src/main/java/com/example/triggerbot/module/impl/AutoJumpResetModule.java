@@ -7,7 +7,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
     private int lastHurtTime = 0;
     private boolean shouldJump = false;
-    private int releaseTickTimer = 0;
+    private int releaseTimer = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -18,22 +18,23 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        // 1. Unpress the key on the subsequent tick to simulate a real hardware press
-        if (releaseTickTimer > 0) {
-            releaseTickTimer--;
-            if (releaseTickTimer == 0) {
+        // Automatically unpress the key next tick so the spacebar isn't stuck "down"
+        if (releaseTimer > 0) {
+            releaseTimer--;
+            if (releaseTimer == 0) {
                 mc.options.jumpKey.setPressed(false);
             }
         }
 
         int hurtTime = mc.player.hurtTime;
 
-        // 2. Rising edge state tracking
-        if (hurtTime > lastHurtTime) {
-            shouldJump = true;
+        // Rising edge check
+        if (hurtTime > lastHurtTime && hurtTime > 0) {
+            if (mc.player.isOnGround()) {
+                shouldJump = true;
+            }
         }
 
-        // Safety reset: Clear flag if the animation ended or we are already airborne
         if (hurtTime == 0 || !mc.player.isOnGround()) {
             shouldJump = false;
         }
@@ -45,18 +46,21 @@ public class AutoJumpResetModule extends EmptyModule {
     public void onJumpReset() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
-        if (mc.currentScreen != null) return;
-        if (mc.player.isUsingItem()) return;
+        if (mc.currentScreen != null || mc.player.isUsingItem()) return;
 
-        // 3. Trigger via Vanilla Inputs to bypass Prediction/Simulation checks
         if (shouldJump && mc.player.isOnGround()) {
-            mc.options.jumpKey.setPressed(true); // Let Minecraft's motor engine handle the physics safely
-            releaseTickTimer = 1;                // Schedule key release
-            shouldJump = false;                  // Consume the trigger
-            System.out.println("[AutoJR] Safe Input Jump Fired");
+            // If Claude's suggestion of mc.player.jump() still flags Ground Spoof/Simulation on your server,
+            // use this hardware key spoofing block instead. It compiles cleanly on 1.21.11 Yarn:
+            mc.options.jumpKey.setPressed(true);
+            releaseTimer = 1; 
+            
+            shouldJump = false;
+            System.out.println("[AutoJR] Safe Key-Spoofed Jump Reset Fired");
         }
     }
 
     @Override
-    public void onPostMovement() {}
+    public void onPostMovement() {
+        // Keeps running safely at tick HEAD via your mixin setup
+    }
 }
