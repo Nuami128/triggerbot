@@ -13,16 +13,28 @@ public class ClientPlayerTickMixin {
 
     private boolean wasHurt = false;
 
-    // Preserved at HEAD to maintain your specific postMovement historical timing
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTickStart(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 
-    // TAIL targeting avoids refmap naming bugs entirely and executes perfectly after keys are parsed
+    // TAIL window handles our safe jump reset execution
     @Inject(method = "tickMovement", at = @At("TAIL"))
     private void onTickMovementTail(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().jumpResetAll();
+    }
+
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void onTickEnd(CallbackInfo ci) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+
+        // CRITICAL CLEANUP: If the module pressed the spacebar to reset your KB,
+        // this line safely releases it the moment you leave the ground.
+        // This stops you from "flying to the moon" or continuously bouncing!
+        if (mc.options.jumpKey.isPressed() && !mc.player.isOnGround()) {
+            mc.options.jumpKey.setPressed(false);
+        }
     }
 
     @Inject(method = "tick", at = @At("HEAD"))
@@ -37,4 +49,3 @@ public class ClientPlayerTickMixin {
         wasHurt = hurtNow;
     }
 }
-
