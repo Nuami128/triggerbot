@@ -19,6 +19,11 @@ public class ClientPlayerTickMixin {
     }
 
     @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickJumpReset(CallbackInfo ci) {
+        TriggerBotMod.getModuleManager().jumpResetAll();
+    }
+
+    @Inject(method = "tick", at = @At("HEAD"))
     private void onTickDebug(CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) return;
