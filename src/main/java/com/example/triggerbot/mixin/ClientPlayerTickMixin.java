@@ -10,17 +10,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayerEntity.class)
 public class ClientPlayerTickMixin {
 
-    // PRE-MOVEMENT: Keeps running safely at the very start of the frame loop
+    // Post-movement hook executing at the absolute TAIL of the player tick loop
     @Inject(method = "tick", at = @At("TAIL"))
-    private void onTickStart(CallbackInfo ci) {
+    private void onTickTail(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 
-    // FIXED: Changed method to tickMovement and target to HEAD.
-    // This allows your module to inject the Spacebar press right before 
-    // Minecraft polls keyboard inputs, making the jump fire instantly.
-    @Inject(method = "tickMovement", at = @At("HEAD"))
-    private void onTickMovementHead(CallbackInfo ci) {
+    // Engine update loop hook executing at the TAIL of tickMovement
+    @Inject(method = "tickMovement", at = @At("TAIL"))
+    private void onTickMovementTail(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().jumpResetAll();
     }
 }
