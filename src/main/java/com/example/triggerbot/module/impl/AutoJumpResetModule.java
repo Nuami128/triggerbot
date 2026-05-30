@@ -2,6 +2,7 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.input.KeyboardInput;
 
 public class AutoJumpResetModule extends EmptyModule {
 
@@ -20,7 +21,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurtTime = mc.player.hurtTime;
 
-        // 1. Rising edge check using both current and previous tick states
+        // 1. Rising edge check using current and historical frames to catch micro-lifts
         if (hurtTime > lastHurtTime && hurtTime > 0) {
             if (mc.player.isOnGround() || wasOnGroundLastTick) {
                 shouldJump = true;
@@ -31,7 +32,7 @@ public class AutoJumpResetModule extends EmptyModule {
             shouldJump = false;
         }
 
-        // Cache the true ground status for the next tick frame
+        // Cache true ground status at the very end of the tick loop
         wasOnGroundLastTick = mc.player.isOnGround();
         lastHurtTime = hurtTime;
     }
@@ -42,19 +43,30 @@ public class AutoJumpResetModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (mc.currentScreen != null || mc.player.isUsingItem()) return;
 
-        // 2. Direct Engine Injection inside the hasMovementInput() loop
+        // 2. Direct Engine Input Injection inside the hasMovementInput() window
         if (shouldJump) {
-            // Bypass the keyboard buffer entirely. Execute the official physics jump 
-            // right here before the game engine processes friction and backward knockback.
-            mc.player.input.jumping = true;
+            // Explicitly cast to KeyboardInput to resolve the "cannot find symbol" Gradle compiler error
+            if (mc.player.input instanceof KeyboardInput) {
+                KeyboardInput input = (KeyboardInput) mc.player.input;
+                
+                // Force the native jumping flag true inside the engine physics sequence
+                input.jumping = true;
+                
+                // ANTI-CHEAT SIMULATION BYPASS: Ensure that if you are moving, the jump request
+                // explicitly mimics real keyboard states so GrimAC doesn't detect raw input anomalies.
+                if (mc.options.forwardKey.isPressed()) input.movementForward = 1.0F;
+                if (mc.options.backKey.isPressed()) input.movementForward = -1.0F;
+                if (mc.options.leftKey.isPressed()) input.movementSideways = 1.0F;
+                if (mc.options.rightKey.isPressed()) input.movementSideways = -1.0F;
+            }
             
-            shouldJump = false; // Instantly consume the trigger
-            System.out.println("[AutoJR] Direct Engine Jump Forced at hasMovementInput!");
+            shouldJump = false; // Instantly consume the flag to prevent looping jumps
+            System.out.println("[AutoJR] Native Input Overwritten within hasMovementInput Pipeline.");
         }
     }
 
     @Override
     public void onPostMovement() {
-        // Safe at tick HEAD via your mixin setup
+        // Safe at tick HEAD via your custom mixin setup
     }
 }
