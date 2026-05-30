@@ -16,29 +16,24 @@ public class AutoJumpResetModule extends EmptyModule {
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
-        if (hurtLockTicks > 0) hurtLockTicks--;
-        lastHurtTime = mc.player.hurtTime;
-    }
 
-    @Override
-    public void onPostMovement() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
+        if (hurtLockTicks > 0) hurtLockTicks--;
 
         int hurt = mc.player.hurtTime;
 
-        if (hurt > 0 && lastHurtTime == 0 && hurtLockTicks == 0) {
+        // Exact tick damage is received
+        if (hurt > lastHurtTime && hurt >= 9 && hurtLockTicks == 0) {
             hurtLockTicks = 10;
 
-            boolean onGround = mc.player.isOnGround();
-            double velY = mc.player.getVelocity().y;
-
-            // Only jump if truly on ground — not airborne from knockback
-            if (onGround && Math.abs(velY) < 0.01) {
+            if (mc.player.isOnGround()) {
                 mc.player.jump();
+                System.out.println("[AutoJR] JUMP FIRED");
             }
         }
 
         lastHurtTime = hurt;
     }
+
+    @Override
+    public void onPostMovement() {}
 }
