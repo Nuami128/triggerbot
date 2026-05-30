@@ -2,6 +2,7 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.input.KeyboardInput;
 
 public class AutoJumpResetModule extends EmptyModule {
 
@@ -38,27 +39,31 @@ public class AutoJumpResetModule extends EmptyModule {
     @Override
     public void onJumpReset() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null || mc.player.input == null) return;
+        if (mc == null || mc.player == null) return;
         if (mc.currentScreen != null || mc.player.isUsingItem()) return;
 
-        // 2. Direct Input Pipeline Injection
+        // 2. Client Input Override System
         if (shouldJump) {
-            // ANTI-CHEAT BYPASS: We write directly to the core player input fields.
-            // This forces the client physics engine to execute a vanilla jump
-            // while automatically keeping all movement packets 100% legal.
-            mc.player.input.jumping = true;
-            
-            // Re-inject current movement vectors to ensure consistency
-            if (mc.options.forwardKey.isPressed()) mc.player.input.movementForward = 1.0F;
-            if (mc.options.backKey.isPressed()) mc.player.input.movementForward = -1.0F;
-            if (mc.options.leftKey.isPressed()) mc.player.input.movementSideways = 1.0F;
-            if (mc.options.rightKey.isPressed()) mc.player.input.movementSideways = -1.0F;
-            
-            // Mark the player entity state fields as actively jumping
+            // ANTI-CHEAT SIMULATION BYPASS:
+            // We safely cast 'input' to 'KeyboardInput' to let the compiler resolve fields correctly.
+            if (mc.player.input instanceof KeyboardInput input) {
+                input.jumping = true;
+                
+                // Keep directional vectors synchronized to avoid prediction mismatches
+                if (mc.options.forwardKey.isPressed()) input.movementForward = 1.0F;
+                if (mc.options.backKey.isPressed()) input.movementForward = -1.0F;
+                if (mc.options.leftKey.isPressed()) input.movementSideways = 1.0F;
+                if (mc.options.rightKey.isPressed()) input.movementSideways = -1.0F;
+            }
+
+            // Simultaneously tell the base entity engine that we are jumping
             mc.player.setJumping(true);
             
+            // Also press the hardware options key to guarantee correct outgoing packet structures
+            mc.options.jumpKey.setPressed(true);
+            
             shouldJump = false; // Instantly consume the flag to prevent looping jumps
-            System.out.println("[AutoJR] Native Input Matrix Written Successfully.");
+            System.out.println("[AutoJR] Clean Input Stream Spoofed Successfully.");
         }
     }
 
