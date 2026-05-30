@@ -16,7 +16,6 @@ public class AutoJumpResetModule extends EmptyModule {
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
-
         if (hurtLockTicks > 0) hurtLockTicks--;
         lastHurtTime = mc.player.hurtTime;
     }
@@ -28,12 +27,14 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurt = mc.player.hurtTime;
 
-        // Damage edge detect — fire jump same tick damage is received
         if (hurt > 0 && lastHurtTime == 0 && hurtLockTicks == 0) {
             hurtLockTicks = 10;
 
-            // Only jump if on ground
-            if (mc.player.isOnGround()) {
+            boolean onGround = mc.player.isOnGround();
+            double velY = mc.player.getVelocity().y;
+
+            // Only jump if truly on ground — not airborne from knockback
+            if (onGround && Math.abs(velY) < 0.01) {
                 mc.player.jump();
             }
         }
