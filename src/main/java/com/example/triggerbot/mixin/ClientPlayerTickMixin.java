@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class ClientPlayerTickMixin {
 
     // PRE-MOVEMENT: Keeps running safely at the very start of the frame loop
-    @Inject(method = "tick", at = @At("HEAD"))
+    @Inject(method = "tick", at = @At("TAIL"))
     private void onTickStart(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
