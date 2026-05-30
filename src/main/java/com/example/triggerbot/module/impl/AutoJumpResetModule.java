@@ -46,7 +46,7 @@ public class AutoJumpResetModule extends EmptyModule {
         if (shouldJump) {
             // Bypass the keyboard buffer entirely. Execute the official physics jump 
             // right here before the game engine processes friction and backward knockback.
-            mc.player.jump();
+            mc.player.input.jumping = true;
             
             shouldJump = false; // Instantly consume the trigger
             System.out.println("[AutoJR] Direct Engine Jump Forced at hasMovementInput!");
