@@ -6,6 +6,7 @@
   "client": [
     "ClientPlayerTickMixin",
     "ClientPlayerEntityInvoker"
+    "ClientNetworkMixin"
   ],
   "injectors": {
     "defaultRequire": 1
