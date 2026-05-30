@@ -6,7 +6,8 @@
   "client": [
     "ClientPlayerTickMixin",
     "ClientPlayerEntityInvoker",
-    "ClientNetworkMixin"
+    "ClientNetworkMixin",
+    "MinecraftClientMixin"
   ],
   "injectors": {
     "defaultRequire": 1
