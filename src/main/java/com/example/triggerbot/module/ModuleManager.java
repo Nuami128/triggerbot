@@ -38,6 +38,15 @@ public class ModuleManager {
         }
     }
 
+    // 1. ADDED: The missing packet-level damage distributor hook
+    public void onDamageAll() {
+        for (ClientModule module : modules) {
+            if (module == null) continue;
+            // Calls the new packet listener loop for active modules instantly
+            module.onDamage();
+        }
+    }
+
     public void enableAll() {
         for (ClientModule module : modules) {
             module.onEnable();
@@ -54,3 +63,4 @@ public class ModuleManager {
         return modules;
     }
 }
+
