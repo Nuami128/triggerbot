@@ -5,7 +5,7 @@
   "mixins": [],
   "client": [
     "ClientPlayerTickMixin",
-    "ClientPlayerEntityInvoker"
+    "ClientPlayerEntityInvoker",
     "ClientNetworkMixin"
   ],
   "injectors": {
