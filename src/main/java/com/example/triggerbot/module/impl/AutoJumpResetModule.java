@@ -20,8 +20,9 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurtTime = mc.player.hurtTime;
 
-        // 1. Precise rising-edge tracking using historical states to capture hits instantly
+        // 1. Pure rising edge capture
         if (hurtTime > lastHurtTime && hurtTime > 0) {
+            // If we were safe on the block last frame, flag a valid vanilla execution window
             if (mc.player.isOnGround() || wasOnGroundLastTick) {
                 shouldJump = true;
             }
@@ -41,20 +42,21 @@ public class AutoJumpResetModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (mc.currentScreen != null || mc.player.isUsingItem()) return;
 
-        // 2. Pure Public Input Assignment
+        // 2. Hardware Input Simulation
         if (shouldJump) {
-            // FIX: We rely exclusively on clear, public, method bindings that are 
-            // 100% guaranteed to exist in Fabric 1.21.11 Yarn environments.
+            // VANILLA INPUT ONLY: We press the game's actual macro binding key.
+            // Because this executes at tickMovement HEAD, Minecraft reads this press 
+            // a fraction of a millisecond later, executing a native physics jump.
             mc.options.jumpKey.setPressed(true);
-            mc.player.setJumping(true);
             
-            shouldJump = false; // Instantly consume the flag to prevent looping jumps
-            System.out.println("[AutoJR] Hardware Input Simulated and Method Injected.");
+            shouldJump = false; // Instantly consume the flag to avoid double jumping
+            System.out.println("[AutoJR] Vanilla Input Jump Fired!");
         }
     }
 
     @Override
     public void onPostMovement() {
-        // Safe at tick HEAD via your custom mixin setup
+        // Handled cleanly at tick HEAD via your mixin architecture
     }
 }
+
