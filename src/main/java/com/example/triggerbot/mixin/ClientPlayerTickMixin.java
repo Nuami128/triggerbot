@@ -16,11 +16,11 @@ public class ClientPlayerTickMixin {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 
-    // THE POST-TICK PIPELINE: Injecting exactly at the TAIL of tick().
-    // This executes after Minecraft handles inputs and clears keys, giving
-    // your module the ultimate window to inject an un-erasable Spacebar press.
-    @Inject(method = "tick", at = @At("TAIL"))
-    private void onTickEnd(CallbackInfo ci) {
+    // FIXED: Changed method to tickMovement and target to HEAD.
+    // This allows your module to inject the Spacebar press right before 
+    // Minecraft polls keyboard inputs, making the jump fire instantly.
+    @Inject(method = "tickMovement", at = @At("HEAD"))
+    private void onTickMovementHead(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().jumpResetAll();
     }
 }
