@@ -2,7 +2,6 @@
   "schemaVersion": 1,
   "id": "triggerbot",
   "version": "1.0.1",
-  "accessWidener": "triggerbot.accesswidener",
   "name": "TriggerBot",
   "description": "A blank Fabric client mod starter.",
   "authors": [
@@ -17,7 +16,6 @@
   },
   "mixins": [
     "triggerbot.mixins.json"
-    "ClientNetworkMixin"
   ],
   "depends": {
     "fabricloader": ">=0.16.9",
