@@ -7,7 +7,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
     private int lastHurtTime = 0;
     private boolean shouldJump = false;
-    private int pressHoldTicks = 0; // Tracks how long the spacebar stays held down
+    private boolean wasOnGroundLastTick = true;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -18,28 +18,21 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        // 1. Keep the key held down across ticks to match true human hardware timing
-        if (pressHoldTicks > 0) {
-            pressHoldTicks--;
-            if (pressHoldTicks == 0) {
-                mc.options.jumpKey.setPressed(false); // Finally release the spacebar
-            }
-        }
-
         int hurtTime = mc.player.hurtTime;
 
-        // 2. Persistent state tracking for damage onset
+        // 1. Rising edge check using both current and previous tick states
         if (hurtTime > lastHurtTime && hurtTime > 0) {
-            if (mc.player.isOnGround()) {
+            if (mc.player.isOnGround() || wasOnGroundLastTick) {
                 shouldJump = true;
             }
         }
 
-        // Safety cleanup if the damage tracking resets completely
         if (hurtTime == 0) {
             shouldJump = false;
         }
 
+        // Cache the true ground status for the next tick frame
+        wasOnGroundLastTick = mc.player.isOnGround();
         lastHurtTime = hurtTime;
     }
 
@@ -49,18 +42,19 @@ public class AutoJumpResetModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (mc.currentScreen != null || mc.player.isUsingItem()) return;
 
-        // 3. Force the physical hold window
-        if (shouldJump && mc.player.isOnGround()) {
-            mc.options.jumpKey.setPressed(true);
-            pressHoldTicks = 2; // Hold it down for 2 ticks to guarantee the physics loop catches it
+        // 2. Direct Engine Injection inside the hasMovementInput() loop
+        if (shouldJump) {
+            // Bypass the keyboard buffer entirely. Execute the official physics jump 
+            // right here before the game engine processes friction and backward knockback.
+            mc.player.jump();
             
-            shouldJump = false; // Consume the trigger flag
-            System.out.println("[AutoJR] Persistent Jump Input Injected!");
+            shouldJump = false; // Instantly consume the trigger
+            System.out.println("[AutoJR] Direct Engine Jump Forced at hasMovementInput!");
         }
     }
 
     @Override
     public void onPostMovement() {
-        // Safe to use for your combat strafes at tick HEAD
+        // Safe at tick HEAD via your mixin setup
     }
 }
