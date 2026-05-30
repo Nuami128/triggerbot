@@ -12,26 +12,28 @@ public class AutoJumpResetModule extends EmptyModule {
     }
 
     @Override
-    public void onJumpReset() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
-        if (mc.currentScreen != null || mc.player.isUsingItem()) return;
-
-        // Step down the cooldown timer on each physics loop processing step
-        if (cooldown > 0) {
-            cooldown--;
-        }
-
-        // Detect active damage state and immediately inject raw jump velocity
-        if (mc.player.hurtTime > 0 && cooldown == 0) {
-            mc.player.jump(); // execute immediately
-            cooldown = 10;
-            System.out.println("[AutoJR] Jump triggered");
-        }
+    public void onTick() {
+        if (cooldown > 0) cooldown--;
     }
 
     @Override
-    public void onTick() {}
+    public void onDamage() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+        if (cooldown > 0) return;
+
+        mc.execute(() -> {
+            if (mc.player == null) return;
+            if (mc.player.isOnGround()) {
+                mc.player.jump();
+                cooldown = 10;
+                System.out.println("[AutoJR] JUMP FIRED");
+            }
+        });
+    }
+
+    @Override
+    public void onJumpReset() {}
 
     @Override
     public void onPostMovement() {}
