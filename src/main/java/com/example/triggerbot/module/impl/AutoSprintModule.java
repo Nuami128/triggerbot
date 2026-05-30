@@ -28,7 +28,7 @@ public class AutoSprintModule extends EmptyModule {
     }
 
     public void onAttack() {
-        attackCooldown = 3;
+        attackCooldown = 1;
     }
 
     private boolean shouldSprint(MinecraftClient mc) {
@@ -41,11 +41,6 @@ public class AutoSprintModule extends EmptyModule {
         if (mc.player.getHungerManager().getFoodLevel() <= 6) return false;
         if (!mc.options.forwardKey.isPressed()) return false;
         if (mc.player.getAttackCooldownProgress(0f) < 1.0f) return false;
-
-        double velX = mc.player.getVelocity().x;
-        double velZ = mc.player.getVelocity().z;
-        if ((velX * velX + velZ * velZ) < 0.001) return false;
-
         return true;
     }
 
@@ -76,4 +71,7 @@ public class AutoSprintModule extends EmptyModule {
 
     @Override
     public void onPostMovement() {}
+
+    @Override
+    public void onJumpReset() {}
 }
