@@ -1,6 +1,5 @@
 package com.example.triggerbot.mixin;
 
-import com.example.triggerbot.TriggerBotMod;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,9 +11,6 @@ public class MinecraftClientMixin {
 
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTick(CallbackInfo ci) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.world == null) return;
-        System.out.println("[MCMixin] tick firing");
-        TriggerBotMod.getModuleManager().jumpResetAll();
+        // Reserved for future use
     }
 }
