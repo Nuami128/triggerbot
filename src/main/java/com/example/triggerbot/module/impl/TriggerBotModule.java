@@ -37,6 +37,9 @@ public class TriggerBotModule implements ClientModule {
     }
 
     @Override
+    public void onJumpReset() {}
+    
+    @Override
     public String getName() { return "TriggerBot"; }
 
     @Override
