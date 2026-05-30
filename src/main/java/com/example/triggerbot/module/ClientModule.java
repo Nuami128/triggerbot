@@ -14,5 +14,7 @@ public interface ClientModule {
 
     void onJumpReset();
 
+    void onDamage();
+
     boolean isEnabled();
 }
