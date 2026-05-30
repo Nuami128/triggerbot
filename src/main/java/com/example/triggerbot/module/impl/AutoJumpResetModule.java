@@ -5,7 +5,6 @@ import net.minecraft.client.MinecraftClient;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private boolean triggerJumpNextFrame = false;
     private int cooldown = 0;
 
     public AutoJumpResetModule() {
@@ -23,27 +22,17 @@ public class AutoJumpResetModule extends EmptyModule {
             cooldown--;
         }
 
-        // detection
+        // Detect active damage state and immediately inject raw jump velocity
         if (mc.player.hurtTime > 0 && cooldown == 0) {
-            triggerJumpNextFrame = true;
+            mc.player.jump(); // execute immediately
             cooldown = 10;
-        }
-    }
-
-    @Override
-    public void onPostMovement() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
-
-        // execution
-        if (triggerJumpNextFrame) {
-            mc.player.jump();
-            triggerJumpNextFrame = false;
             System.out.println("[AutoJR] Jump triggered");
         }
     }
 
     @Override
     public void onTick() {}
-}
 
+    @Override
+    public void onPostMovement() {}
+}
