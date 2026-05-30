@@ -2,7 +2,6 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.input.KeyboardInput;
 
 public class AutoJumpResetModule extends EmptyModule {
 
@@ -42,28 +41,15 @@ public class AutoJumpResetModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (mc.currentScreen != null || mc.player.isUsingItem()) return;
 
-        // 2. Client Input Override System
+        // 2. Pure Public Input Assignment
         if (shouldJump) {
-            // ANTI-CHEAT SIMULATION BYPASS:
-            // We safely cast 'input' to 'KeyboardInput' to let the compiler resolve fields correctly.
-            if (mc.player.input instanceof KeyboardInput input) {
-                input.jumping = true;
-                
-                // Keep directional vectors synchronized to avoid prediction mismatches
-                if (mc.options.forwardKey.isPressed()) input.movementForward = 1.0F;
-                if (mc.options.backKey.isPressed()) input.movementForward = -1.0F;
-                if (mc.options.leftKey.isPressed()) input.movementSideways = 1.0F;
-                if (mc.options.rightKey.isPressed()) input.movementSideways = -1.0F;
-            }
-
-            // Simultaneously tell the base entity engine that we are jumping
+            // FIX: We rely exclusively on clear, public, method bindings that are 
+            // 100% guaranteed to exist in Fabric 1.21.11 Yarn environments.
+            mc.options.jumpKey.setPressed(true);
             mc.player.setJumping(true);
             
-            // Also press the hardware options key to guarantee correct outgoing packet structures
-            mc.options.jumpKey.setPressed(true);
-            
             shouldJump = false; // Instantly consume the flag to prevent looping jumps
-            System.out.println("[AutoJR] Clean Input Stream Spoofed Successfully.");
+            System.out.println("[AutoJR] Hardware Input Simulated and Method Injected.");
         }
     }
 
