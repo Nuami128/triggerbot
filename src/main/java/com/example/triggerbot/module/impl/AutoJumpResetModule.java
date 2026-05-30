@@ -5,10 +5,6 @@ import net.minecraft.client.MinecraftClient;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private int lastHurtTime = 0;
-    private int hurtLockTicks = 0;
-    private boolean shouldJump = false;
-
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
@@ -16,32 +12,22 @@ public class AutoJumpResetModule extends EmptyModule {
     @Override
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null || mc.world == null) return;
+        if (mc == null || mc.player == null) return;
+        if (mc.currentScreen != null) return;
+        if (mc.player.isUsingItem()) return;
+        if (mc.player.hurtTime == 0) return;
+        if (mc.player.hurtTime == mc.player.maxHurtTime) return;
+        if (!mc.player.isOnGround()) return;
 
-        int hurt = mc.player.hurtTime;
-
-        if (hurt > lastHurtTime && hurt >= 9 && hurtLockTicks == 0) {
-            hurtLockTicks = 20;
-            shouldJump = true;
+        if (mc.player.hurtTime == 9) {
+            mc.player.jump();
+            System.out.println("[AutoJR] JUMP FIRED");
         }
-
-        if (hurtLockTicks > 0) hurtLockTicks--;
-
-        lastHurtTime = hurt;
-    }
-
-    @Override
-    public void onJumpReset() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null || mc.world == null) return;
-
-        if (!shouldJump) return;
-        shouldJump = false;
-
-        mc.player.jump();
-        System.out.println("[AutoJR] JUMP FIRED");
     }
 
     @Override
     public void onPostMovement() {}
+
+    @Override
+    public void onJumpReset() {}
 }
