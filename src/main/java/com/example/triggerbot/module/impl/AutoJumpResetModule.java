@@ -23,10 +23,10 @@ public class AutoJumpResetModule extends EmptyModule {
             cooldown--;
         }
 
-        // FIXED: Replaced strict == 10 with your flexible, lag-resilient damage-state condition
+        // detection
         if (mc.player.hurtTime > 0 && cooldown == 0) {
             triggerJumpNextFrame = true;
-            cooldown = 10; // Lock out detection for 10 ticks to prevent duplicate triggers
+            cooldown = 10;
         }
     }
 
@@ -35,13 +35,11 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        // The trigger flag stays primed until a valid grounded jump successfully completes
+        // execution
         if (triggerJumpNextFrame) {
-            if (mc.player.isOnGround()) {
-                mc.player.jump();
-                System.out.println("[AutoJR] Jump triggered");
-                triggerJumpNextFrame = false;
-            }
+            mc.player.jump();
+            triggerJumpNextFrame = false;
+            System.out.println("[AutoJR] Jump triggered");
         }
     }
 
