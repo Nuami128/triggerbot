@@ -13,15 +13,15 @@ public class ClientPlayerTickMixin {
 
     private boolean wasHurt = false;
 
-    // Preserved at HEAD to prevent your Post flags from returning
+    // Preserved at HEAD to maintain your specific postMovement historical timing
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTickStart(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 
-    // Unambiguous and bulletproof: Injecting directly after movement keys are mapped
-    @Inject(method = "tickMovement", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerEntity;hasMovementInput()Z"))
-    private void onTickMovementAfterInput(CallbackInfo ci) {
+    // TAIL targeting avoids refmap naming bugs entirely and executes perfectly after keys are parsed
+    @Inject(method = "tickMovement", at = @At("TAIL"))
+    private void onTickMovementTail(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().jumpResetAll();
     }
 
@@ -37,3 +37,4 @@ public class ClientPlayerTickMixin {
         wasHurt = hurtNow;
     }
 }
+
