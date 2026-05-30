@@ -5,8 +5,9 @@ import net.minecraft.client.MinecraftClient;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private boolean wasHurt = false;
+    private int lastHurtTime = 0;
     private boolean shouldJump = false;
+    private int releaseTickTimer = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -17,11 +18,27 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        // Force-clear the jump request if we are no longer hurt 
-        // OR if we are flying/falling to prevent delayed "ghost" jumps
-        if (mc.player.hurtTime == 0 || !mc.player.isOnGround()) {
+        // 1. Unpress the key on the subsequent tick to simulate a real hardware press
+        if (releaseTickTimer > 0) {
+            releaseTickTimer--;
+            if (releaseTickTimer == 0) {
+                mc.options.jumpKey.setPressed(false);
+            }
+        }
+
+        int hurtTime = mc.player.hurtTime;
+
+        // 2. Rising edge state tracking
+        if (hurtTime > lastHurtTime) {
+            shouldJump = true;
+        }
+
+        // Safety reset: Clear flag if the animation ended or we are already airborne
+        if (hurtTime == 0 || !mc.player.isOnGround()) {
             shouldJump = false;
         }
+
+        lastHurtTime = hurtTime;
     }
 
     @Override
@@ -31,19 +48,12 @@ public class AutoJumpResetModule extends EmptyModule {
         if (mc.currentScreen != null) return;
         if (mc.player.isUsingItem()) return;
 
-        boolean hurtNow = mc.player.hurtTime > 0;
-
-        // 1. Detect rising edge of damage instantly
-        if (hurtNow && !wasHurt) {
-            shouldJump = true;
-        }
-        wasHurt = hurtNow;
-
-        // 2. Fire strictly if we are on the ground at the moment of impact
+        // 3. Trigger via Vanilla Inputs to bypass Prediction/Simulation checks
         if (shouldJump && mc.player.isOnGround()) {
-            mc.player.jump();
-            shouldJump = false; // Consume the trigger immediately
-            System.out.println("[AutoJR] JUMP FIRED SUCCESSFULLY");
+            mc.options.jumpKey.setPressed(true); // Let Minecraft's motor engine handle the physics safely
+            releaseTickTimer = 1;                // Schedule key release
+            shouldJump = false;                  // Consume the trigger
+            System.out.println("[AutoJR] Safe Input Jump Fired");
         }
     }
 
