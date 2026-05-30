@@ -2,8 +2,6 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.Box;
 
 public class AutoJumpResetModule extends EmptyModule {
 
@@ -38,9 +36,8 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        // Release jump key from previous tick
         if (releaseJump) {
-            mc.options.jumpKey.setPressed(false);
+            mc.player.input.jumping = false;
             releaseJump = false;
         }
 
@@ -49,23 +46,9 @@ public class AutoJumpResetModule extends EmptyModule {
 
         if (mc.world == null) return;
 
-        if (playerWithinRange(mc, 4.0)) {
-            mc.options.jumpKey.setPressed(true);
-            releaseJump = true;
-            System.out.println("[AutoJR] JUMP FIRED");
-        } else {
-            System.out.println("[AutoJR] SKIPPED - no player in range");
-        }
-    }
-
-    private boolean playerWithinRange(MinecraftClient mc, double range) {
-        Box searchBox = mc.player.getBoundingBox().expand(range);
-        for (var entity : mc.world.getEntitiesByClass(
-                PlayerEntity.class, searchBox,
-                e -> e != mc.player && e.isAlive() && !e.isSpectator())) {
-            return true;
-        }
-        return false;
+        mc.player.input.jumping = true;
+        releaseJump = true;
+        System.out.println("[AutoJR] JUMP FIRED");
     }
 
     @Override
