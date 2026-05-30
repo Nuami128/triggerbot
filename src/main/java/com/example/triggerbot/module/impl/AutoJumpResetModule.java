@@ -2,7 +2,6 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.input.KeyboardInput;
 
 public class AutoJumpResetModule extends EmptyModule {
 
@@ -43,25 +42,17 @@ public class AutoJumpResetModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (mc.currentScreen != null || mc.player.isUsingItem()) return;
 
-        // 2. Direct Engine Input Injection inside the hasMovementInput() window
+        // 2. Native Method Injection inside the hasMovementInput() window
         if (shouldJump) {
-            // Explicitly cast to KeyboardInput to resolve the "cannot find symbol" Gradle compiler error
-            if (mc.player.input instanceof KeyboardInput) {
-                KeyboardInput input = (KeyboardInput) mc.player.input;
-                
-                // Force the native jumping flag true inside the engine physics sequence
-                input.jumping = true;
-                
-                // ANTI-CHEAT SIMULATION BYPASS: Ensure that if you are moving, the jump request
-                // explicitly mimics real keyboard states so GrimAC doesn't detect raw input anomalies.
-                if (mc.options.forwardKey.isPressed()) input.movementForward = 1.0F;
-                if (mc.options.backKey.isPressed()) input.movementForward = -1.0F;
-                if (mc.options.leftKey.isPressed()) input.movementSideways = 1.0F;
-                if (mc.options.rightKey.isPressed()) input.movementSideways = -1.0F;
-            }
+            // This vanilla method updates the player's engine state cleanly, 
+            // bypassing abstract Input field mapping errors completely.
+            mc.player.setJumping(true);
+            
+            // Trigger the native physics jump logic block inside the loop
+            mc.player.jump();
             
             shouldJump = false; // Instantly consume the flag to prevent looping jumps
-            System.out.println("[AutoJR] Native Input Overwritten within hasMovementInput Pipeline.");
+            System.out.println("[AutoJR] Native Jump Reset Triggered.");
         }
     }
 
