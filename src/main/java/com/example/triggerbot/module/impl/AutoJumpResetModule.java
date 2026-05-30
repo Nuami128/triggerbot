@@ -26,15 +26,16 @@ public class AutoJumpResetModule extends EmptyModule {
         }
 
         // 2. The Step-Down Key Injection Matrix
-        if (jumpTicks > 0) {
-            // Simulate a genuine, un-erasable vanilla Spacebar press
-            mc.options.jumpKey.setPressed(true); 
-            
-            jumpTicks--;
-        } else {
-            // Automatically clear the key state once the execution window concludes
-            mc.options.jumpKey.setPressed(false);
-        }
+        if (mc.player.hurtTime > 0) {
+    jumpTicks = 2;
+}
+
+if (jumpTicks > 0) {
+    mc.options.jumpKey.setPressed(true);
+    jumpTicks--;
+} else {
+    mc.options.jumpKey.setPressed(false);
+}
 
         lastHurtTime = currentHurtTime;
     }
