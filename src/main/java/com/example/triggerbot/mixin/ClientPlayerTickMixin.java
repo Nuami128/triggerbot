@@ -18,7 +18,7 @@ public class ClientPlayerTickMixin {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 
-    // TAIL window handles our safe jump reset execution
+    // TAIL window handles our safe jump reset input checks
     @Inject(method = "tickMovement", at = @At("TAIL"))
     private void onTickMovementTail(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().jumpResetAll();
@@ -29,9 +29,9 @@ public class ClientPlayerTickMixin {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        // CRITICAL CLEANUP: If the module pressed the spacebar to reset your KB,
-        // this line safely releases it the moment you leave the ground.
-        // This stops you from "flying to the moon" or continuously bouncing!
+        // AUTOMATED RE-VALIDATION: If the jump reset pressed the spacebar, 
+        // release it immediately once the player leaves the ground.
+        // This ensures the physics engine registers a legal vanilla keystroke length!
         if (mc.options.jumpKey.isPressed() && !mc.player.isOnGround()) {
             mc.options.jumpKey.setPressed(false);
         }
