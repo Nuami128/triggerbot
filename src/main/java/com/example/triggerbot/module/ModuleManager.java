@@ -57,6 +57,13 @@ public class ModuleManager {
         }
     }
 
+    public void clientTickAll() {
+    for (ClientModule module : modules) {
+        if (module == null) continue;
+        module.onClientTick();
+         }
+    }
+    
     public List<ClientModule> getModules() {
         return modules;
     }
