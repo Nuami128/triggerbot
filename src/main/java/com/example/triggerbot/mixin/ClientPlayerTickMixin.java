@@ -18,13 +18,6 @@ public class ClientPlayerTickMixin {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 
-    @Inject(method = "tick", at = @At("TAIL"))
-    private void onTickJumpReset(CallbackInfo ci) {
-        ClientPlayerEntity self = (ClientPlayerEntity)(Object)this;
-        System.out.println("[Mixin] hurtTime from this=" + self.hurtTime);
-        TriggerBotMod.getModuleManager().jumpResetAll();
-    }
-
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTickDebug(CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
