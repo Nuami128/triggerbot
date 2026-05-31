@@ -14,11 +14,11 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        System.out.println("[AJR] onDamage called | onGround: " + mc.player.isOnGround());
-
-        if (!mc.player.isOnGround()) return;
-
-        mc.player.jump();
+        mc.execute(() -> {
+            if (mc.player == null) return;
+            if (!mc.player.isOnGround()) return;
+            mc.player.jump();
+        });
     }
 
     @Override
