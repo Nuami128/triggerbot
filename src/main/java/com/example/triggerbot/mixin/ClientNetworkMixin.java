@@ -1,6 +1,5 @@
 package com.example.triggerbot.mixin;
 
-import com.example.triggerbot.TriggerBotMod;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
@@ -18,13 +17,14 @@ public class ClientNetworkMixin {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
         if (packet.getEntityId() != mc.player.getId()) return;
+        if (!mc.player.isOnGround()) return;
 
-        // Schedule on main thread, after velocity is fully applied
-        mc.execute(() -> {
-            if (mc.player == null) return;
-            if (!mc.player.isOnGround()) return;
-            mc.player.jump();
-        });
+        // Set Y velocity directly — same effect as jump(), works on any thread
+        mc.player.setVelocity(
+            mc.player.getVelocity().x,
+            0.42f,
+            mc.player.getVelocity().z
+        );
     }
 
     @Inject(method = "onEntityStatus", at = @At("HEAD"))
