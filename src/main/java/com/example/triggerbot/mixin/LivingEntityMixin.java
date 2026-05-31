@@ -18,8 +18,10 @@ public class LivingEntityMixin {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        // Only fire for our player
-        if ((Object) this != mc.player) return;
+        LivingEntity self = (LivingEntity)(Object) this;
+
+        // Compare by entity ID instead of reference
+        if (self.getId() != mc.player.getId()) return;
 
         TriggerBotMod.getModuleManager().onDamageAll();
     }
