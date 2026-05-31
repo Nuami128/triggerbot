@@ -5,10 +5,8 @@ import net.minecraft.client.MinecraftClient;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private boolean shouldJump = false;
     private boolean hasJumped = false;
     private int cooldown = 0;
-    private int groundedTicks = 0;
     private int lastHurtTime = 0;
 
     public AutoJumpResetModule() {
@@ -23,40 +21,24 @@ public class AutoJumpResetModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
 
         if (mc.player.isOnGround()) {
-            groundedTicks++;
             if (hasJumped) hasJumped = false;
-        } else {
-            groundedTicks = 0;
         }
 
         int hurtTime = mc.player.hurtTime;
 
-        // Detect damage here after player tick has updated hurtTime
-        if (hurtTime == 9 && lastHurtTime != 9 && cooldown == 0 && !hasJumped && groundedTicks > 0) {
-            shouldJump = true;
+        if (hurtTime == 9 && lastHurtTime != 9 && cooldown == 0 && !hasJumped) {
+            mc.player.jump();
+            hasJumped = true;
+            cooldown = 15;
+            System.out.println("[AutoJR] JUMP FIRED");
         }
 
-        if (hurtTime == 0) shouldJump = false;
-
+        if (hurtTime == 0) hasJumped = false;
         lastHurtTime = hurtTime;
     }
 
     @Override
-    public void onJumpReset() {
-        // Fires at MinecraftClient.tick HEAD — before KB is applied
-        if (!shouldJump) return;
-
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
-        if (mc.currentScreen != null) return;
-        if (mc.player.isUsingItem()) return;
-
-        mc.player.jump();
-        shouldJump = false;
-        hasJumped = true;
-        cooldown = 15;
-        System.out.println("[AutoJR] JUMP FIRED");
-    }
+    public void onJumpReset() {}
 
     @Override
     public void onPostMovement() {}
