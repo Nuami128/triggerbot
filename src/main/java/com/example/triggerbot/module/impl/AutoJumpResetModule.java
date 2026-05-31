@@ -23,12 +23,11 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurtTime = mc.player.hurtTime;
 
-        // hurtTime starts at 9 in this version, not 10
         if (hurtTime == 9 && !shouldJump) {
             shouldJump = true;
         }
 
-        if (shouldJump && mc.player.isOnGround()) {
+        if (shouldJump) {
             mc.player.jump();
             shouldJump = false;
             System.out.println("[AutoJR] JUMP FIRED");
