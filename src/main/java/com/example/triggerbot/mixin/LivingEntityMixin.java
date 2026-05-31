@@ -20,9 +20,11 @@ public class LivingEntityMixin {
 
         LivingEntity self = (LivingEntity)(Object) this;
 
-        // Compare by entity ID instead of reference
+        System.out.println("[Damage] Entity ID: " + self.getId() + " | Player ID: " + mc.player.getId() + " | Amount: " + amount);
+
         if (self.getId() != mc.player.getId()) return;
 
+        System.out.println("[Damage] MATCHED PLAYER - calling onDamageAll");
         TriggerBotMod.getModuleManager().onDamageAll();
     }
 }
