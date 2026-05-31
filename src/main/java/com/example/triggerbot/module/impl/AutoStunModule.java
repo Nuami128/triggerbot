@@ -64,7 +64,10 @@ public class AutoStunModule implements ClientModule {
     }
 
     @Override
-    public void onTick() {}
+public void onTick() {}
+
+@Override
+public void onDamage() {}
 
     @Override
     public void onPostMovement() {
