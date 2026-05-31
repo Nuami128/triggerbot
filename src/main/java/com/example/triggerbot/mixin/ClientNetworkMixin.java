@@ -1,5 +1,6 @@
 package com.example.triggerbot.mixin;
 
+import com.example.triggerbot.TriggerBotMod;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
@@ -17,13 +18,8 @@ public class ClientNetworkMixin {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
         if (packet.getEntityId() != mc.player.getId()) return;
-        if (!mc.player.isOnGround()) return;
 
-        mc.player.setVelocity(
-            mc.player.getVelocity().x,
-            0.3f,
-            mc.player.getVelocity().z
-        );
+        TriggerBotMod.getModuleManager().onDamageAll();
     }
 
     @Inject(method = "onEntityStatus", at = @At("HEAD"))
