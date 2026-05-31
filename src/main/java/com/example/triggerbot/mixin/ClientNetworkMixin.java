@@ -2,6 +2,7 @@ package com.example.triggerbot.mixin;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
+import net.minecraft.entity.Entity;
 import net.minecraft.network.packet.s2c.play.EntityStatusS2CPacket;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,6 +17,7 @@ public class ClientNetworkMixin {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null || mc.world == null) return;
 
-        System.out.println("[Network] Entity ID: " + packet.getEntityId() + " | Status: " + packet.getStatus() + " | Player ID: " + mc.player.getId());
+        Entity entity = packet.getEntity(mc.world);
+        System.out.println("[Network] Status: " + packet.getStatus() + " | Entity: " + entity + " | Player: " + mc.player);
     }
 }
