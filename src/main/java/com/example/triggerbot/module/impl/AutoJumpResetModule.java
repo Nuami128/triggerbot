@@ -12,32 +12,34 @@ public class AutoJumpResetModule extends EmptyModule {
     }
 
     @Override
-    public void onTick() {
-        if (cooldown > 0) cooldown--;
+    public void onClientTick() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+
+        if (cooldown > 0) {
+            cooldown--;
+            mc.options.jumpKey.setPressed(false);
+            return;
+        }
+
+        if (mc.player.isOnGround()) {
+            mc.options.jumpKey.setPressed(true);
+            cooldown = 2;
+        } else {
+            mc.options.jumpKey.setPressed(false);
+        }
     }
 
     @Override
     public void onDamage() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
-        if (cooldown > 0) return;
-        if (!mc.player.isOnGround()) return;
-
-        mc.execute(() -> {
-            if (mc.player == null) return;
-            mc.options.jumpKey.setPressed(true);
-            cooldown = 2;
-        });
+        cooldown = 0;
     }
 
     @Override
-    public void onPostMovement() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
-        if (cooldown <= 1) {
-            mc.options.jumpKey.setPressed(false);
-        }
-    }
+    public void onTick() {}
+
+    @Override
+    public void onPostMovement() {}
 
     @Override
     public void onJumpReset() {}
