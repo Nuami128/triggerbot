@@ -13,7 +13,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
     @Override
     public void onDamage() {
-        if (jumpDelay < 0) jumpDelay = 1;
+        if (jumpDelay < 0) jumpDelay = 0;
     }
 
     @Override
