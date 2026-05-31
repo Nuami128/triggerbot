@@ -5,9 +5,7 @@ import net.minecraft.client.MinecraftClient;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private boolean hasJumped = false;
     private int cooldown = 0;
-    private int lastHurtTime = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -16,23 +14,19 @@ public class AutoJumpResetModule extends EmptyModule {
     @Override
     public void onTick() {
         if (cooldown > 0) cooldown--;
+    }
 
+    @Override
+    public void onDamage() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
+        if (cooldown > 0) return;
 
-        if (mc.player.isOnGround()) {
-            hasJumped = false;
-        }
-
-        int hurtTime = mc.player.hurtTime;
-
-        if (hurtTime > 0 && lastHurtTime == 0 && cooldown == 0 && !hasJumped && mc.player.isOnGround()) {
+        mc.execute(() -> {
+            if (mc.player == null) return;
             mc.player.jump();
-            hasJumped = true;
             cooldown = 20;
-        }
-
-        lastHurtTime = hurtTime;
+        });
     }
 
     @Override
@@ -40,7 +34,4 @@ public class AutoJumpResetModule extends EmptyModule {
 
     @Override
     public void onPostMovement() {}
-
-    @Override
-    public void onDamage() {}
 }
