@@ -6,6 +6,9 @@ import net.minecraft.entity.player.PlayerEntity;
 
 public class AutoJumpResetModule extends EmptyModule {
 
+    private int combatTimer = 0;
+    private static final int COMBAT_TIMEOUT = 40; // 2 seconds after last damage event
+
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
@@ -15,10 +18,12 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
+        if (combatTimer > 0) combatTimer--;
+
         PlayerEntity player = mc.player;
 
-        // Jump reset every tick if on ground and moving
-        if (player.isOnGround() && isMoving(player)) {
+        // Only jump reset if recently in combat and on ground and moving
+        if (combatTimer > 0 && player.isOnGround() && isMoving(player)) {
             mc.execute(player::jump);
         }
     }
@@ -28,7 +33,9 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        // Immediately jump reset on any damage event
+        // Reset combat timer every time damage occurs
+        combatTimer = COMBAT_TIMEOUT;
+
         mc.execute(() -> {
             if (mc.player == null) return;
             if (mc.player.isOnGround()) {
@@ -37,7 +44,7 @@ public class AutoJumpResetModule extends EmptyModule {
         });
     }
 
-    private boolean isMoving(net.minecraft.entity.player.PlayerEntity player) {
+    private boolean isMoving(PlayerEntity player) {
         return player.getVelocity().horizontalLength() > 0.003;
     }
 
