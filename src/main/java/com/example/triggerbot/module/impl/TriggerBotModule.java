@@ -40,6 +40,9 @@ public class TriggerBotModule implements ClientModule {
 public void onJumpReset() {}
 
 @Override
+public void onClientTick() {}
+    
+@Override
 public void onDamage() {}
     
     @Override
