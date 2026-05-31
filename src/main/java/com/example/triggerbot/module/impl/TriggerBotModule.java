@@ -37,7 +37,10 @@ public class TriggerBotModule implements ClientModule {
     }
 
     @Override
-    public void onJumpReset() {}
+public void onJumpReset() {}
+
+@Override
+public void onDamage() {}
     
     @Override
     public String getName() { return "TriggerBot"; }
