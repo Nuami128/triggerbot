@@ -6,13 +6,28 @@ import net.minecraft.client.MinecraftClient;
 public class AutoJumpResetModule extends EmptyModule {
 
     private boolean shouldJump = false;
+    private boolean hasJumped = false;
+    private int cooldown = 0;
+    private int groundedTicks = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
 
     @Override
-    public void onTick() {}
+    public void onTick() {
+        if (cooldown > 0) cooldown--;
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+
+        if (mc.player.isOnGround()) {
+            groundedTicks++;
+            if (hasJumped) hasJumped = false;
+        } else {
+            groundedTicks = 0;
+        }
+    }
 
     @Override
     public void onJumpReset() {
@@ -23,13 +38,16 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurtTime = mc.player.hurtTime;
 
-        if (hurtTime == 9 && !shouldJump) {
+        // Only queue jump if we were recently on the ground and haven't jumped yet
+        if (hurtTime == 9 && !shouldJump && cooldown == 0 && !hasJumped && groundedTicks > 0) {
             shouldJump = true;
         }
 
-        if (shouldJump) {
+        if (shouldJump && !hasJumped) {
             mc.player.jump();
             shouldJump = false;
+            hasJumped = true;
+            cooldown = 15;
             System.out.println("[AutoJR] JUMP FIRED");
         }
 
