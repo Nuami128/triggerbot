@@ -26,7 +26,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurtTime = mc.player.hurtTime;
 
-        if (hurtTime > 0 && lastHurtTime == 0 && cooldown == 0 && !hasJumped) {
+        if (hurtTime > 0 && lastHurtTime == 0 && cooldown == 0 && !hasJumped && mc.player.isOnGround()) {
             mc.player.jump();
             hasJumped = true;
             cooldown = 20;
