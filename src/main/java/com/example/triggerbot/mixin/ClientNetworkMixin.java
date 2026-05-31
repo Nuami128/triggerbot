@@ -12,13 +12,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientNetworkMixin {
 
-    @Inject(method = "onEntityStatus", at = @At("HEAD"))
-    private void onEntityStatusPacket(EntityStatusS2CPacket packet, CallbackInfo ci) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null || mc.world == null) return;
+ @Inject(method = "onEntityStatus", at = @At("HEAD"))
+private void onEntityStatusPacket(EntityStatusS2CPacket packet, CallbackInfo ci) {
+    MinecraftClient mc = MinecraftClient.getInstance();
+    if (mc == null || mc.player == null || mc.world == null) return;
 
-        if (packet.getEntity(mc.world) == mc.player && packet.getStatus() == 2) {
-            TriggerBotMod.getModuleManager().onDamageAll();
-        }
+    Entity entity = packet.getEntity(mc.world);
+    if (entity == mc.player) {
+        System.out.println("[Network] Status received: " + packet.getStatus());
     }
-}
+}   
+
