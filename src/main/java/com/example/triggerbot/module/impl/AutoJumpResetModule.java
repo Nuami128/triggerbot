@@ -6,7 +6,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Vec3d;
 
 public class AutoJumpResetModule extends EmptyModule {
 
@@ -22,7 +21,6 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null || mc.world == null) return;
 
-        // Release jump key after 2 ticks
         if (releaseTimer > 0) {
             releaseTimer--;
             if (releaseTimer == 0) {
@@ -30,19 +28,18 @@ public class AutoJumpResetModule extends EmptyModule {
             }
         }
 
-        // Pre-jump when nearby enemy is swinging at us
         if (!mc.player.isOnGround()) return;
 
-        Vec3d pos = mc.player.getPos();
-        Box searchBox = new Box(pos.x - 4, pos.y - 2, pos.z - 4,
-                                pos.x + 4, pos.y + 2, pos.z + 4);
+        double x = mc.player.getX();
+        double y = mc.player.getY();
+        double z = mc.player.getZ();
+        Box searchBox = new Box(x - 4, y - 2, z - 4, x + 4, y + 2, z + 4);
 
         for (Entity e : mc.world.getEntitiesByClass(LivingEntity.class, searchBox, entity ->
                 entity != mc.player && entity.isAlive() && !entity.isSpectator())) {
 
             if (!(e instanceof PlayerEntity pe)) continue;
 
-            // Detect swing: handSwingProgress > 0 means they just started swinging
             if (pe.handSwingProgress > 0.0f && pe.handSwingProgress < 0.3f) {
                 mc.options.jumpKey.setPressed(true);
                 releaseTimer = 2;
@@ -53,7 +50,6 @@ public class AutoJumpResetModule extends EmptyModule {
 
     @Override
     public void onDamage() {
-        // Fallback — jump if we somehow missed the swing detection
         shouldJump = true;
     }
 
