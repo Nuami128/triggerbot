@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientNetworkMixin {
 
-    @Inject(method = "onEntityVelocityUpdate", at = @At("HEAD"))
+    @Inject(method = "onEntityVelocityUpdate", at = @At("TAIL"))
     private void onVelocityUpdate(EntityVelocityUpdateS2CPacket packet, CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
