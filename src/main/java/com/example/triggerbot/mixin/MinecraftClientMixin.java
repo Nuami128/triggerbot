@@ -13,7 +13,7 @@ public class MinecraftClientMixin {
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTick(CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.world == null) return;
+        if (mc.world == null || mc.player == null) return;
         TriggerBotMod.getModuleManager().jumpResetAll();
     }
 }
