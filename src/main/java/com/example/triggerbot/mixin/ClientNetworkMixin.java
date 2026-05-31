@@ -17,7 +17,7 @@ public class ClientNetworkMixin {
     private void onVelocityUpdate(EntityVelocityUpdateS2CPacket packet, CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
-        if (packet.getId() != mc.player.getId()) return;
+        if (packet.getEntityId() != mc.player.getId()) return;
 
         TriggerBotMod.getModuleManager().onDamageAll();
     }
