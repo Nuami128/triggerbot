@@ -17,11 +17,7 @@ public class ClientNetworkMixin {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null || mc.world == null) return;
 
-        if (packet.getEntity(mc.world) == mc.player) {
-            System.out.println("[Network] Status received: " + packet.getStatus());
-        }
-
-        if (packet.getEntity(mc.world) == mc.player && packet.getStatus() == 28) {
+        if (packet.getEntity(mc.world) == mc.player && packet.getStatus() == 2) {
             TriggerBotMod.getModuleManager().onDamageAll();
         }
     }
