@@ -19,10 +19,9 @@ public class ClientNetworkMixin {
         if (packet.getEntityId() != mc.player.getId()) return;
         if (!mc.player.isOnGround()) return;
 
-        // Set Y velocity directly — same effect as jump(), works on any thread
         mc.player.setVelocity(
             mc.player.getVelocity().x,
-            0.42f,
+            0.3f,
             mc.player.getVelocity().z
         );
     }
