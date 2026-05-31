@@ -2,6 +2,7 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.math.Vec3d;
 
 public class AutoJumpResetModule extends EmptyModule {
 
@@ -38,13 +39,13 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurtTime = mc.player.hurtTime;
 
-        // Only queue jump if we were recently on the ground and haven't jumped yet
         if (hurtTime == 9 && !shouldJump && cooldown == 0 && !hasJumped && groundedTicks > 0) {
             shouldJump = true;
         }
 
         if (shouldJump && !hasJumped) {
-            mc.player.jump();
+            Vec3d vel = mc.player.getVelocity();
+            mc.player.setVelocity(vel.x, 0.42, vel.z);
             shouldJump = false;
             hasJumped = true;
             cooldown = 15;
