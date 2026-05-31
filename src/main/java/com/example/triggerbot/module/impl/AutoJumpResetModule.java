@@ -2,7 +2,6 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.math.Vec3d;
 
 public class AutoJumpResetModule extends EmptyModule {
 
@@ -44,8 +43,7 @@ public class AutoJumpResetModule extends EmptyModule {
         }
 
         if (shouldJump && !hasJumped) {
-            Vec3d vel = mc.player.getVelocity();
-            mc.player.setVelocity(vel.x, 0.42, vel.z);
+            mc.player.jump();
             shouldJump = false;
             hasJumped = true;
             cooldown = 15;
