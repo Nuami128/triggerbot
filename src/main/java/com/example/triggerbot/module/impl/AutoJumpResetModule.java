@@ -5,7 +5,7 @@ import net.minecraft.client.MinecraftClient;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private int jumpDelay = -1;
+    private int holdTicks = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -13,7 +13,15 @@ public class AutoJumpResetModule extends EmptyModule {
 
     @Override
     public void onDamage() {
-        if (jumpDelay < 0) jumpDelay = 0;
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+        if (!mc.player.isOnGround()) return;
+
+        mc.execute(() -> {
+            if (mc.player == null) return;
+            mc.player.jump();
+            holdTicks = 3;
+        });
     }
 
     @Override
@@ -21,17 +29,8 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        if (jumpDelay > 0) {
-            jumpDelay--;
-            return;
-        }
-
-        if (jumpDelay == 0) {
-            jumpDelay = -1;
-            if (!mc.player.isOnGround()) return;
-            mc.options.jumpKey.setPressed(true);
-        } else {
-            mc.options.jumpKey.setPressed(false);
+        if (holdTicks > 0) {
+            holdTicks--;
         }
     }
 
