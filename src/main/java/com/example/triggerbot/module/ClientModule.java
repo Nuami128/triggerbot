@@ -1,6 +1,6 @@
 package com.example.triggerbot.module;
 
-public interface ClientModule {
+public interface ClientModule extends TickListener {
     String getName();
     boolean isEnabled();
     void onEnable();
@@ -8,5 +8,8 @@ public interface ClientModule {
     void onTick();
     void onPostMovement();
     void onJumpReset();
-    void onDamage(); // ADD THIS
+    void onDamage();
+
+    @Override
+    default void onClientTick() {}
 }
