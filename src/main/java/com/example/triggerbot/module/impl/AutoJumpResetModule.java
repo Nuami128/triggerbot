@@ -10,24 +10,15 @@ public class AutoJumpResetModule extends EmptyModule {
     }
 
     @Override
-    public void onClientTick() {
+    public void onDamage() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
-
-        System.out.println("[AJR] hurtTime: " + mc.player.hurtTime + " | maxHurtTime: " + mc.player.maxHurtTime + " | onGround: " + mc.player.isOnGround());
-
-        if (mc.currentScreen != null) return;
-        if (mc.player.isUsingItem()) return;
-        if (mc.player.hurtTime == 0) return;
-        if (mc.player.hurtTime == mc.player.maxHurtTime) return;
-        if (mc.player.hurtTime != 9) return;
         if (!mc.player.isOnGround()) return;
-
         mc.player.jump();
     }
 
     @Override
-    public void onDamage() {}
+    public void onClientTick() {}
 
     @Override
     public void onTick() {}
