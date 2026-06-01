@@ -5,22 +5,19 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPlayerEntity.class)
 public class ClientPlayerEntityMixin {
 
-    @ModifyArg(
-    method = "sendMovementPackets",
-    at = @At(value = "INVOKE", target = "Lnet/minecraft/network/packet/c2s/play/PlayerMoveC2SPacket$Full;<init>(DDDFFZZ)V"),
-    index = 6,
-    remap = false
-)
-private boolean modifyOnGround(boolean onGround) {
-    if (AJRState.suppressGroundSpoof) {
+    @Inject(method = "sendMovementPackets", at = @At("HEAD"))
+    private void onSendMovementPackets(CallbackInfo ci) {
+        if (!AJRState.suppressGroundSpoof) return;
         AJRState.suppressGroundSpoof = false;
-        return true;
-    }
-    return onGround;
+
+        ClientPlayerEntity player = (ClientPlayerEntity)(Object) this;
+        // Force ground state to true for this packet cycle
+        player.setOnGround(true);
     }
 }
