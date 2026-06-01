@@ -24,6 +24,7 @@ public class ClientNetworkMixin {
             mc.execute(() -> {
                 if (mc.player == null) return;
                 if (!mc.player.isOnGround()) return;
+                ClientPlayerEntityMixin.suppressGroundSpoof = true;
                 mc.player.jump();
             });
         }
