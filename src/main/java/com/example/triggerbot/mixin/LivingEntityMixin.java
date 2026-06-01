@@ -14,17 +14,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class LivingEntityMixin {
 
     @Inject(method = "damage", at = @At("HEAD"))
-    private void onDamage(ServerWorld world, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
-
-        LivingEntity self = (LivingEntity)(Object) this;
-
-        System.out.println("[Damage] Entity ID: " + self.getId() + " | Player ID: " + mc.player.getId() + " | Amount: " + amount);
-
-        if (self.getId() != mc.player.getId()) return;
-
-        System.out.println("[Damage] MATCHED PLAYER - calling onDamageAll");
-        TriggerBotMod.getModuleManager().onDamageAll();
+private void onDamage(net.minecraft.world.World world, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+    MinecraftClient mc = MinecraftClient.getInstance();
+    if (mc == null || mc.player == null) return;
+    LivingEntity self = (LivingEntity)(Object) this;
+    if (self.getId() != mc.player.getId()) return;
+    TriggerBotMod.getModuleManager().onDamageAll();
     }
 }
