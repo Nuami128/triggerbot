@@ -1,6 +1,5 @@
 package com.example.triggerbot.mixin;
 
-import com.example.triggerbot.TriggerBotMod;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.listener.PacketListener;
@@ -20,12 +19,13 @@ public class ClientNetworkMixin {
         if (mc == null || mc.player == null) return;
 
         if (packet instanceof EntityVelocityUpdateS2CPacket velocityPacket) {
-            System.out.println("[AJR] Velocity packet | entityId: " + velocityPacket.getEntityId() + " | playerId: " + mc.player.getId() + " | onGround: " + mc.player.isOnGround() + " | thread: " + Thread.currentThread().getName());
-            if (velocityPacket.getEntityId() == mc.player.getId()) {
-                if (mc.player.isOnGround()) {
-                    mc.player.jump();
-                }
-            }
+            if (velocityPacket.getEntityId() != mc.player.getId()) return;
+
+            mc.execute(() -> {
+                if (mc.player == null) return;
+                if (!mc.player.isOnGround()) return;
+                mc.player.jump();
+            });
         }
     }
 }
