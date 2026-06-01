@@ -8,6 +8,7 @@
     "ClientPlayerEntityInvoker",
     "ClientNetworkMixin",
     "MinecraftClientMixin",
+    "ClientPlayerEntityMixin",
     "LivingEntityMixin"
   ],
   "injectors": {
