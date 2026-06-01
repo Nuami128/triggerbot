@@ -1,5 +1,6 @@
 package com.example.triggerbot.mixin;
 
+import com.example.triggerbot.module.AJRState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.listener.PacketListener;
@@ -24,7 +25,7 @@ public class ClientNetworkMixin {
             mc.execute(() -> {
                 if (mc.player == null) return;
                 if (!mc.player.isOnGround()) return;
-                ClientPlayerEntityMixin.suppressGroundSpoof = true;
+                AJRState.suppressGroundSpoof = true;
                 mc.player.jump();
             });
         }
