@@ -15,9 +15,6 @@ repositories {
 
 loom {
     accessWidenerPath = file("src/main/resources/triggerbot.accesswidener")
-    mods {
-        "triggerbot" {
-            sourceSet sourceSets.main
         }
     }
 }
