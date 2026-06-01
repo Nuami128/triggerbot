@@ -9,7 +9,6 @@ import net.minecraft.util.math.Box;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private boolean shouldJump = false;
     private int releaseTimer = 0;
 
     public AutoJumpResetModule() {
@@ -49,22 +48,13 @@ public class AutoJumpResetModule extends EmptyModule {
     }
 
     @Override
-    public void onDamage() {
-        shouldJump = true;
-    }
-
-    @Override
-    public void onPostMovement() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
-        if (!shouldJump) return;
-        shouldJump = false;
-        if (!mc.player.isOnGround()) return;
-        mc.player.jump();
-    }
+    public void onDamage() {}
 
     @Override
     public void onTick() {}
+
+    @Override
+    public void onPostMovement() {}
 
     @Override
     public void onJumpReset() {}
