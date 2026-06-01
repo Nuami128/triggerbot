@@ -2,6 +2,7 @@
   "required": true,
   "package": "com.example.triggerbot.mixin",
   "compatibilityLevel": "JAVA_21",
+  "refmap": "triggerbot.mixins.refmap.json",
   "mixins": [],
   "client": [
     "ClientPlayerTickMixin",
