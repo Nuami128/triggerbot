@@ -10,12 +10,17 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 @Mixin(ClientPlayerEntity.class)
 public class ClientPlayerEntityMixin {
 
-    @ModifyArg(method = "sendMovementPackets", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/packet/c2s/play/PlayerMoveC2SPacket$Full;<init>(DDDFFZZ)V"), index = 6)
-    private boolean modifyOnGround(boolean onGround) {
-        if (AJRState.suppressGroundSpoof) {
-            AJRState.suppressGroundSpoof = false;
-            return true;
-        }
-        return onGround;
+    @ModifyArg(
+    method = "sendMovementPackets",
+    at = @At(value = "INVOKE", target = "Lnet/minecraft/network/packet/c2s/play/PlayerMoveC2SPacket$Full;<init>(DDDFFZZ)V"),
+    index = 6,
+    remap = false
+)
+private boolean modifyOnGround(boolean onGround) {
+    if (AJRState.suppressGroundSpoof) {
+        AJRState.suppressGroundSpoof = false;
+        return true;
+    }
+    return onGround;
     }
 }
