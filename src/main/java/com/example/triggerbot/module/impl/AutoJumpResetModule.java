@@ -6,11 +6,15 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 
 public class AutoJumpResetModule extends EmptyModule {
 
     private boolean shouldJump = false;
     private int releaseTimer = 0;
+    private double savedVelX = 0;
+    private double savedVelZ = 0;
+    private boolean restoreVelocity = false;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -26,6 +30,13 @@ public class AutoJumpResetModule extends EmptyModule {
             if (releaseTimer == 0) {
                 mc.options.jumpKey.setPressed(false);
             }
+        }
+
+        // Restore horizontal velocity after jump to keep KB at 100%
+        if (restoreVelocity) {
+            restoreVelocity = false;
+            Vec3d current = mc.player.getVelocity();
+            mc.player.setVelocity(savedVelX, current.y, savedVelZ);
         }
 
         if (!mc.player.isOnGround()) return;
@@ -50,6 +61,14 @@ public class AutoJumpResetModule extends EmptyModule {
 
     @Override
     public void onDamage() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+
+        // Save horizontal velocity before jump so we can restore it
+        Vec3d vel = mc.player.getVelocity();
+        savedVelX = vel.x;
+        savedVelZ = vel.z;
+        restoreVelocity = true;
         shouldJump = true;
     }
 
