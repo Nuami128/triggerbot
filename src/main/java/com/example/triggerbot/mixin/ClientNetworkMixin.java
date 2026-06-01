@@ -20,6 +20,7 @@ public class ClientNetworkMixin {
         if (mc == null || mc.player == null) return;
 
         if (packet instanceof EntityVelocityUpdateS2CPacket velocityPacket) {
+            System.out.println("[AJR] Velocity packet | entityId: " + velocityPacket.getEntityId() + " | playerId: " + mc.player.getId() + " | onGround: " + mc.player.isOnGround() + " | thread: " + Thread.currentThread().getName());
             if (velocityPacket.getEntityId() == mc.player.getId()) {
                 if (mc.player.isOnGround()) {
                     mc.player.jump();
