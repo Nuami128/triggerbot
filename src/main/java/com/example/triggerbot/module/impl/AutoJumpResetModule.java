@@ -6,7 +6,7 @@ import net.minecraft.client.MinecraftClient;
 public class AutoJumpResetModule extends EmptyModule {
 
     private int cooldown = 0;
-    private int lastHurtTime = 0;
+    private boolean wasAttacking = false;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -24,25 +24,18 @@ public class AutoJumpResetModule extends EmptyModule {
         if (!isEnabled()) return;
         if (!mc.player.isOnGround() || !mc.player.isSprinting()) return;
 
-        int hurtTime = mc.player.hurtTime;
+        boolean isAttacking = mc.options.attackKey.isPressed();
 
-        if (hurtTime != lastHurtTime && hurtTime == 0 && lastHurtTime == 1) {
+        if (isAttacking && !wasAttacking) {
             mc.player.jump();
-            cooldown = 10;
+            cooldown = 8;
         }
 
-        lastHurtTime = hurtTime;
+        wasAttacking = isAttacking;
     }
 
-    @Override
-    public void onClientTick() {}
-
-    @Override
-    public void onJumpReset() {}
-
-    @Override
-    public void onPostMovement() {}
-
-    @Override
-    public void onDamage() {}
+    @Override public void onClientTick() {}
+    @Override public void onJumpReset() {}
+    @Override public void onPostMovement() {}
+    @Override public void onDamage() {}
 }
