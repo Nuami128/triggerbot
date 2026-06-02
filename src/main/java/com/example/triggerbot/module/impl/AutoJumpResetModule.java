@@ -20,7 +20,6 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null || mc.world == null) return;
 
-        // Execute queued jump from swing detection
         if (shouldJump) {
             shouldJump = false;
             if (mc.player.isOnGround()) {
@@ -41,7 +40,8 @@ public class AutoJumpResetModule extends EmptyModule {
 
             if (!(e instanceof PlayerEntity pe)) continue;
 
-            if (pe.handSwingProgress > 0.0f && pe.handSwingProgress < 0.3f) {
+            // Tighter window — closer to the actual hit
+            if (pe.handSwingProgress >= 0.4f && pe.handSwingProgress <= 0.6f) {
                 shouldJump = true;
                 break;
             }
