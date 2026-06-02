@@ -10,9 +10,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayerEntity.class)
 public class ClientPlayerTickMixin {
 
-    @Inject(method = "tick", at = @At("HEAD"))
-    private void onTickStart(CallbackInfo ci) {
-        TriggerBotMod.getModuleManager().postMovementAll();
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void onTickEnd(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().tickAll();
     }
 }
