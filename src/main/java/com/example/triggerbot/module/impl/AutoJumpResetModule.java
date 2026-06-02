@@ -7,7 +7,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
     private int cooldown = 0;
     private int pendingJump = -1;
-    private boolean isJumping = false; // Tracks if we are actively holding space
+    private int jumpTicksLeft = 0; // Better tracking for holding/releasing the key
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -18,21 +18,32 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
-        // Release the key on the tick immediately following the jump trigger
-        if (isJumping) {
-            mc.options.jumpKey.setPressed(false);
-            isJumping = false;
-        }
-
+        // Decrement cooldowns
         if (cooldown > 0) cooldown--;
 
+        // Input Simulation Worker
+        if (jumpTicksLeft > 0) {
+            jumpTicksLeft--;
+            if (jumpTicksLeft == 0) {
+                // Safely release the spacebar after the game processes the physics tick
+                mc.options.jumpKey.setPressed(false);
+            }
+        }
+
+        // Pending Jump Evaluator
         if (pendingJump > 0) {
             pendingJump--;
             if (pendingJump == 0) {
-                // Grim requires strict ground verification when the key is pressed
+                // Strict vanilla compliance ground-check to pass Grim Anticheat
                 if (mc.player.isOnGround()) {
+                    // Force the raw input state active
                     mc.options.jumpKey.setPressed(true); 
-                    isJumping = true; // Flag to release it on the next tick
+                    
+                    // Minecraft uses the .pressed field for movement inputs inside ClientPlayerEntity
+                    // Depending on mappings, this field name is usually just "pressed"
+                    mc.options.jumpKey.pressed = true; 
+
+                    jumpTicksLeft = 1; // Keep it held for exactly this tick
                     cooldown = 10;
                 }
                 pendingJump = -1;
@@ -58,4 +69,3 @@ public class AutoJumpResetModule extends EmptyModule {
     @Override public void onPostMovement() {}
     @Override public void onDamage() {}
 }
-
