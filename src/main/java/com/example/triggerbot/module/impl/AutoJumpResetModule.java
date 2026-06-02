@@ -7,6 +7,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
     private int cooldown = 0;
     private int pendingJump = -1;
+    private boolean isJumping = false; // Tracks if we are actively holding space
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -14,14 +15,24 @@ public class AutoJumpResetModule extends EmptyModule {
 
     @Override
     public void onTick() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+
+        // Release the key on the tick immediately following the jump trigger
+        if (isJumping) {
+            mc.options.jumpKey.setPressed(false);
+            isJumping = false;
+        }
+
         if (cooldown > 0) cooldown--;
 
         if (pendingJump > 0) {
             pendingJump--;
             if (pendingJump == 0) {
-                MinecraftClient mc = MinecraftClient.getInstance();
-                if (mc != null && mc.player != null && mc.player.isOnGround()) {
-                    mc.player.jump();
+                // Grim requires strict ground verification when the key is pressed
+                if (mc.player.isOnGround()) {
+                    mc.options.jumpKey.setPressed(true); 
+                    isJumping = true; // Flag to release it on the next tick
                     cooldown = 10;
                 }
                 pendingJump = -1;
@@ -47,3 +58,4 @@ public class AutoJumpResetModule extends EmptyModule {
     @Override public void onPostMovement() {}
     @Override public void onDamage() {}
 }
+
