@@ -29,6 +29,8 @@ public class AutoStunModule implements ClientModule {
 
     @Override
     public void onJumpReset() {}
+
+    @Override public void onAttack() {}
     
     @Override
     public String getName() { return "AutoStun"; }
