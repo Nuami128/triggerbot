@@ -1,7 +1,7 @@
 package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
-import com.example.triggerbot.mixinterface.KeyBindingAccessor; // Ensure this matches your accessor's package
+import com.example.triggerbot.mixin.KeyBindingAccessor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
