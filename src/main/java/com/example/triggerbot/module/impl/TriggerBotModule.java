@@ -177,6 +177,7 @@ public void onDamage() {}
             mc.player.setSprinting(false);
             cooldownTicks = 1;
             autoSprint.onAttack();
+            TriggerBotMod.getModuleManager().onAttackAll(); 
         }
     }
 
