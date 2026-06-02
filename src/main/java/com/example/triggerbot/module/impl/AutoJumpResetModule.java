@@ -6,6 +6,7 @@ import net.minecraft.client.MinecraftClient;
 public class AutoJumpResetModule extends EmptyModule {
 
     private int cooldown = 0;
+    private int pendingJump = -1;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -14,19 +15,31 @@ public class AutoJumpResetModule extends EmptyModule {
     @Override
     public void onTick() {
         if (cooldown > 0) cooldown--;
+
+        if (pendingJump > 0) {
+            pendingJump--;
+            if (pendingJump == 0) {
+                MinecraftClient mc = MinecraftClient.getInstance();
+                if (mc != null && mc.player != null && mc.player.isOnGround()) {
+                    mc.player.jump();
+                    cooldown = 10;
+                }
+                pendingJump = -1;
+            }
+        }
     }
 
     @Override
     public void onAttack() {
-        if (cooldown > 0) return;
-
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
         if (!isEnabled()) return;
         if (!mc.player.isOnGround()) return;
+        if (mc.targetedEntity == null) return;
+        if (cooldown > 0) return;
 
-        mc.player.jump();
-        cooldown = 8;
+        // Random 1-3 tick delay before jumping
+        pendingJump = 1 + (int)(Math.random() * 3);
     }
 
     @Override public void onClientTick() {}
