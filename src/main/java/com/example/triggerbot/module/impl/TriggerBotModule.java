@@ -41,6 +41,8 @@ public void onJumpReset() {}
 
 @Override
 public void onClientTick() {}
+
+@Override public void onAttack() {}
     
 @Override
 public void onDamage() {}
