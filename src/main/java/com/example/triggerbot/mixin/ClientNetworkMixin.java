@@ -21,23 +21,24 @@ public class ClientNetworkMixin {
         if (packet instanceof EntityVelocityUpdateS2CPacket velocityPacket) {
             if (velocityPacket.getEntityId() != mc.player.getId()) return;
 
-            // Cancel the normal packet handling
+            EntityVelocityUpdateS2CPacketAccessor accessor = (EntityVelocityUpdateS2CPacketAccessor) velocityPacket;
+            int vx = accessor.getVelocityX();
+            int vy = accessor.getVelocityY();
+            int vz = accessor.getVelocityZ();
+
             ci.cancel();
 
-            // Schedule on main thread: jump first, then apply velocity
             mc.execute(() -> {
                 if (mc.player == null) return;
 
-                // Jump before velocity is applied
                 if (mc.player.isOnGround()) {
                     mc.player.jump();
                 }
 
-                // Manually apply the velocity packet after jumping
                 mc.player.setVelocity(
-                    velocityPacket.getVelocityX() / 8000.0,
-                    velocityPacket.getVelocityY() / 8000.0,
-                    velocityPacket.getVelocityZ() / 8000.0
+                    vx / 8000.0,
+                    vy / 8000.0,
+                    vz / 8000.0
                 );
             });
         }
