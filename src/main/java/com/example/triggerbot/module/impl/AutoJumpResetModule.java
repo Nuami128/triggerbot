@@ -2,65 +2,51 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.Box;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private boolean shouldJump = false;
-    private int jumpCooldown = 0;
+    private boolean hasJumped = false;
+    private int cooldown = 0;
+    private int lastHurtTime = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
     }
 
     @Override
-    public void onClientTick() {
+    public void onTick() {
+        if (cooldown > 0) cooldown--;
+
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null || mc.world == null) return;
+        if (mc == null || mc.player == null) return;
 
-        if (jumpCooldown > 0) jumpCooldown--;
+        if (mc.player.isOnGround()) {
+            hasJumped = false;
+        }
 
-        if (shouldJump) {
-            shouldJump = false;
-            if (mc.player.isOnGround()) {
+        int hurtTime = mc.player.hurtTime;
+
+        if (hurtTime > 0 && lastHurtTime == 0 && cooldown == 0 && !hasJumped) {
+            // Only jump if on ground and actively moving
+            if (mc.player.isOnGround() && mc.player.isSprinting()) {
                 mc.player.jump();
-                jumpCooldown = 10;
-            }
-            return;
-        }
-
-        if (!mc.player.isOnGround()) return;
-        if (jumpCooldown > 0) return;
-
-        double x = mc.player.getX();
-        double y = mc.player.getY();
-        double z = mc.player.getZ();
-        Box searchBox = new Box(x - 4, y - 2, z - 4, x + 4, y + 2, z + 4);
-
-        for (Entity e : mc.world.getEntitiesByClass(LivingEntity.class, searchBox, entity ->
-                entity != mc.player && entity.isAlive() && !entity.isSpectator())) {
-
-            if (!(e instanceof PlayerEntity pe)) continue;
-
-            if (pe.handSwingProgress >= 0.7f && pe.handSwingProgress <= 0.9f) {
-                shouldJump = true;
-                break;
+                hasJumped = true;
+                cooldown = 15;
             }
         }
+
+        lastHurtTime = hurtTime;
     }
 
     @Override
-    public void onDamage() {}
+    public void onClientTick() {}
 
     @Override
-    public void onTick() {}
+    public void onJumpReset() {}
 
     @Override
     public void onPostMovement() {}
 
     @Override
-    public void onJumpReset() {}
+    public void onDamage() {}
 }
