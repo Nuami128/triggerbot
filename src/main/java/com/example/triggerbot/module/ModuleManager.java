@@ -45,6 +45,13 @@ public class ModuleManager {
         }
     }
 
+    public void onAttackAll() {
+        for (ClientModule module : modules) {
+            if (module == null) continue;
+            module.onAttack();
+        }
+    }
+
     public void enableAll() {
         for (ClientModule module : modules) {
             module.onEnable();
@@ -58,12 +65,12 @@ public class ModuleManager {
     }
 
     public void clientTickAll() {
-    for (ClientModule module : modules) {
-        if (module == null) continue;
-        module.onClientTick();
-         }
+        for (ClientModule module : modules) {
+            if (module == null) continue;
+            module.onClientTick();
+        }
     }
-    
+
     public List<ClientModule> getModules() {
         return modules;
     }
