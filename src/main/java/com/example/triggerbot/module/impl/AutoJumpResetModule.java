@@ -10,6 +10,7 @@ import net.minecraft.util.math.Box;
 public class AutoJumpResetModule extends EmptyModule {
 
     private boolean shouldJump = false;
+    private int jumpCooldown = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -20,15 +21,19 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null || mc.world == null) return;
 
+        if (jumpCooldown > 0) jumpCooldown--;
+
         if (shouldJump) {
             shouldJump = false;
             if (mc.player.isOnGround()) {
                 mc.player.jump();
+                jumpCooldown = 10;
             }
             return;
         }
 
         if (!mc.player.isOnGround()) return;
+        if (jumpCooldown > 0) return;
 
         double x = mc.player.getX();
         double y = mc.player.getY();
@@ -40,8 +45,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
             if (!(e instanceof PlayerEntity pe)) continue;
 
-            // Tighter window — closer to the actual hit
-            if (pe.handSwingProgress >= 0.4f && pe.handSwingProgress <= 0.6f) {
+            if (pe.handSwingProgress >= 0.7f && pe.handSwingProgress <= 0.9f) {
                 shouldJump = true;
                 break;
             }
