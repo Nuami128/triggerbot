@@ -4,7 +4,8 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
   "client": [
-    "PlayerAttackMixin"
+    "PlayerAttackMixin",
+    "KeyBindingAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
