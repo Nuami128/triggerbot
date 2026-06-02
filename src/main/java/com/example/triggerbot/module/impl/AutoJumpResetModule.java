@@ -9,7 +9,7 @@ import net.minecraft.util.math.Box;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private int releaseTimer = 0;
+    private boolean shouldJump = false;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -20,11 +20,13 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null || mc.world == null) return;
 
-        if (releaseTimer > 0) {
-            releaseTimer--;
-            if (releaseTimer == 0) {
-                mc.options.jumpKey.setPressed(false);
+        // Execute queued jump from swing detection
+        if (shouldJump) {
+            shouldJump = false;
+            if (mc.player.isOnGround()) {
+                mc.player.jump();
             }
+            return;
         }
 
         if (!mc.player.isOnGround()) return;
@@ -40,8 +42,7 @@ public class AutoJumpResetModule extends EmptyModule {
             if (!(e instanceof PlayerEntity pe)) continue;
 
             if (pe.handSwingProgress > 0.0f && pe.handSwingProgress < 0.3f) {
-                mc.options.jumpKey.setPressed(true);
-                releaseTimer = 2;
+                shouldJump = true;
                 break;
             }
         }
