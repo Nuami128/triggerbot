@@ -9,8 +9,7 @@
     "ClientNetworkMixin",
     "ClientPlayerEntityMixin",
     "MinecraftClientMixin",
-    "LivingEntityMixin",
-    "EntityVelocityUpdateS2CPacketAccessor"
+    "LivingEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
