@@ -16,6 +16,9 @@ public class ClientNetworkMixin {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
         if (packet.getEntityId() != mc.player.getId()) return;
+
+        System.out.println("[AJR] Velocity packet received | onGround: " + mc.player.isOnGround() + " | thread: " + Thread.currentThread().getName());
+
         if (!mc.player.isOnGround()) return;
 
         mc.player.jump();
