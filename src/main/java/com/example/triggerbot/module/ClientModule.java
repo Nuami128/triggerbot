@@ -10,4 +10,5 @@ public interface ClientModule {
     void onJumpReset();
     void onDamage();
     void onClientTick();
+    void onAttack();
 }
