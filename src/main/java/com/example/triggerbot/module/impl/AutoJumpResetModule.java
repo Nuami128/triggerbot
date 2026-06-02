@@ -6,6 +6,7 @@ import net.minecraft.client.MinecraftClient;
 public class AutoJumpResetModule extends EmptyModule {
 
     private int cooldown = 0;
+    private int lastHurtTime = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -21,14 +22,27 @@ public class AutoJumpResetModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
         if (!isEnabled()) return;
-
-        // Only jump reset when grounded and sprinting
         if (!mc.player.isOnGround() || !mc.player.isSprinting()) return;
 
-        // Check if we just hit someone (lastAttackedTicks resets on hit)
-        if (mc.player.getLastAttackedTicks() == 1) {
+        int hurtTime = mc.player.hurtTime;
+
+        if (hurtTime != lastHurtTime && hurtTime == 0 && lastHurtTime == 1) {
             mc.player.jump();
             cooldown = 10;
         }
+
+        lastHurtTime = hurtTime;
     }
+
+    @Override
+    public void onClientTick() {}
+
+    @Override
+    public void onJumpReset() {}
+
+    @Override
+    public void onPostMovement() {}
+
+    @Override
+    public void onDamage() {}
 }
