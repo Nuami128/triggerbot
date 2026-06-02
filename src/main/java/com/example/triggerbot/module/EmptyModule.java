@@ -20,4 +20,5 @@ public abstract class EmptyModule implements ClientModule {
     @Override public void onJumpReset() {}
     @Override public void onDamage() {}
     @Override public void onClientTick() {}
+    @Override public void onAttack() {}
 }
