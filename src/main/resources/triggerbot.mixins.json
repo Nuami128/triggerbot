@@ -4,12 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
   "client": [
-    "ClientPlayerTickMixin",
-    "ClientPlayerEntityInvoker",
-    "ClientNetworkMixin",
-    "ClientPlayerEntityMixin",
-    "MinecraftClientMixin",
-    "LivingEntityMixin"
+    "ClientPlayerTickMixin"
   ],
   "injectors": {
     "defaultRequire": 1
