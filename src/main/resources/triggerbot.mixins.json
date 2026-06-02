@@ -4,7 +4,6 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
   "client": [
-    "ClientPlayerTickMixin"
   ],
   "injectors": {
     "defaultRequire": 1
