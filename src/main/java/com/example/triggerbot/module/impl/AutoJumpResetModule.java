@@ -7,7 +7,6 @@ public class AutoJumpResetModule extends EmptyModule {
 
     private boolean hasJumped = false;
     private int cooldown = 0;
-    private int lastHurtTime = 0;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -24,18 +23,13 @@ public class AutoJumpResetModule extends EmptyModule {
             hasJumped = false;
         }
 
-        int hurtTime = mc.player.hurtTime;
-
-        if (hurtTime > 0 && lastHurtTime == 0 && cooldown == 0 && !hasJumped) {
-            // Only jump if on ground and actively moving
+        if (mc.player.hurtTime == 9 && cooldown == 0 && !hasJumped) {
             if (mc.player.isOnGround() && mc.player.isSprinting()) {
                 mc.player.jump();
                 hasJumped = true;
                 cooldown = 15;
             }
         }
-
-        lastHurtTime = hurtTime;
     }
 
     @Override
