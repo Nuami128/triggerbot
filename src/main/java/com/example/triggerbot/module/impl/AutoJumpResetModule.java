@@ -22,11 +22,11 @@ public class AutoJumpResetModule extends EmptyModule {
         if (timer >= 10) {
             timer = 0;
             if (mc.player.isOnGround() && mc.player.input != null) {
-                mc.player.input.jump = true;
+                mc.player.input.jumping = true;
             }
         } else {
             if (mc.player.input != null) {
-                mc.player.input.jump = false;
+                mc.player.input.jumping = false;
             }
         }
     }
