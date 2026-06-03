@@ -2,6 +2,7 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.input.PlayerInput; // Required for 1.21.11
 
 public class AutoJumpResetModule extends EmptyModule {
 
@@ -22,21 +23,35 @@ public class AutoJumpResetModule extends EmptyModule {
         if (!isEnabled()) return;
 
         int hurtTime = mc.player.hurtTime;
+        
+        // FIX 1: STRICT VELOCITY CHECK
+        // Only trigger if we have Vertical Velocity (Knockback lifts you up). 
+        // We ignore X/Z so sprinting doesn't trigger it.
+        boolean tookVerticalKnockback = mc.player.getVelocity().y > 0.0001;
 
-        // FIX: Verify that YOUR player actually has an active attacker forcing your damage state
-        boolean isBeingAttacked = mc.player.getAttacker() != null || mc.player.getLastAttacker() != null;
-
-        if (hurtTime == 9 && lastHurtTime != 9 && cooldown == 0 && isBeingAttacked) {
-            // Safe randomizer delay of 0 to 1 ticks
+        if (hurtTime == 9 && lastHurtTime != 9 && cooldown == 0 && tookVerticalKnockback) {
+            // Random delay (0-1 ticks) to look human
             pendingJump = (int)(Math.random() * 2); 
         }
         lastHurtTime = hurtTime;
 
-        // Process the delayed jump
         if (pendingJump >= 0) {
             if (pendingJump == 0) {
-                mc.player.input.jump();
-                cooldown = 10; // 10 tick cooldown to prevent false multi-jump flags
+                // FIX 2: PACKET COMPLIANT JUMP
+                // We recreate the record so the server SEES the input packet.
+                // This prevents Grim "Simulation" flags.
+                PlayerInput current = mc.player.input.playerInput;
+                mc.player.input.playerInput = new PlayerInput(
+                    current.forward(),
+                    current.backward(),
+                    current.left(),
+                    current.right(),
+                    true, // JUMP = TRUE
+                    current.sneak(),
+                    current.sprint()
+                );
+                
+                cooldown = 10; 
                 pendingJump = -1;
             } else {
                 pendingJump--;
@@ -50,4 +65,3 @@ public class AutoJumpResetModule extends EmptyModule {
     @Override public void onPostMovement() {}
     @Override public void onDamage() {}
 }
-
