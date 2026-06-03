@@ -5,7 +5,8 @@
   "mixins": [],
   "client": [
     "PlayerAttackMixin",
-    "KeyBindingAccessor"
+    "KeyBindingAccessor",
+    "ClientPlayerTickMixin"
   ],
   "injectors": {
     "defaultRequire": 1
