@@ -1,49 +1,55 @@
-package com.example.triggerbot;
+package com.example.triggerbot.module.impl;
 
-import com.example.triggerbot.module.ModuleManager;
-import com.example.triggerbot.module.impl.AutoJumpResetModule;
-import com.example.triggerbot.module.impl.AutoSprintModule;
-import com.example.triggerbot.module.impl.AutoStunModule;
-import com.example.triggerbot.module.impl.TriggerBotModule;
+import com.example.triggerbot.module.EmptyModule;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.PlayerInput;
 
-import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+public class AutoJumpResetModule extends EmptyModule {
 
-public class TriggerBotMod implements ClientModInitializer {
+    private int cooldown = 0;
+    private boolean shouldReset = false;
 
-    private static final ModuleManager MODULE_MANAGER = ModuleManager.getInstance();
-    private static AutoStunModule AUTO_STUN;
-    private static TriggerBotModule TRIGGER;
-    private static AutoSprintModule AUTO_SPRINT;
-    private static AutoJumpResetModule AUTO_JUMP_RESET;
+    public AutoJumpResetModule() {
+        super("Auto Jump Reset");
+    }
+
+    @Override 
+    public void onDamage() {
+        if (!isEnabled() || cooldown > 0) return;
+        shouldReset = true; 
+    }
 
     @Override
-    public void onInitializeClient() {
-        System.out.println("TRIGGERBOT INIT");
+    public void onTick() {
+        if (cooldown > 0) cooldown--;
 
-        AUTO_STUN = new AutoStunModule();
-        AUTO_SPRINT = new AutoSprintModule();
-        TRIGGER = new TriggerBotModule(AUTO_STUN, AUTO_SPRINT); // pass AUTO_SPRINT
-        AUTO_JUMP_RESET = new AutoJumpResetModule();
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
 
-        MODULE_MANAGER.register(AUTO_SPRINT);
-        MODULE_MANAGER.register(AUTO_STUN);
-        MODULE_MANAGER.register(TRIGGER);
-        MODULE_MANAGER.register(AUTO_JUMP_RESET);
+        if (shouldReset && cooldown == 0) {
+            PlayerInput current = mc.player.input.playerInput;
+            
+            mc.player.input.playerInput = new PlayerInput(
+                current.forward(),
+                current.backward(),
+                current.left(),
+                current.right(),
+                true, // Force Jump Packet Input
+                current.sneak(),
+                current.sprint()
+            );
 
-        TRIGGER.onEnable();
-        AUTO_SPRINT.onEnable();
-        AUTO_JUMP_RESET.onEnable();
-
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-    MODULE_MANAGER.tickAll();
-    MODULE_MANAGER.postMovementAll();
-    MODULE_MANAGER.clientTickAll();
-});
-
+            cooldown = 10;      
+            shouldReset = false; 
+        }
+        
+        if (cooldown > 0) {
+            shouldReset = false;
+        }
     }
 
-    public static ModuleManager getModuleManager() {
-        return MODULE_MANAGER;
-    }
+    @Override public void onAttack() {}
+    @Override public void onClientTick() {}
+    @Override public void onJumpReset() {}
+    @Override public void onPostMovement() {}
 }
