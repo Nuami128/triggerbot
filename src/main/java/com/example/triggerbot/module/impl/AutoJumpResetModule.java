@@ -22,7 +22,7 @@ public class AutoJumpResetModule extends EmptyModule {
         if (!isEnabled()) return;
 
         int hurtTime = mc.player.hurtTime;
-        if (hurtTime == 10 && lastHurtTime != 10 && cooldown == 0) {
+        if (hurtTime == 9 && lastHurtTime != 9 && cooldown == 0) {
             pendingJump = 1 + (int)(Math.random() * 3);
         }
         lastHurtTime = hurtTime;
