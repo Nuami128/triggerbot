@@ -1,67 +1,49 @@
-package com.example.triggerbot.module.impl;
+package com.example.triggerbot;
 
-import com.example.triggerbot.module.EmptyModule;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.PlayerInput; // [FIXED] Correct import for Yarn 1.21.11
+import com.example.triggerbot.module.ModuleManager;
+import com.example.triggerbot.module.impl.AutoJumpResetModule;
+import com.example.triggerbot.module.impl.AutoSprintModule;
+import com.example.triggerbot.module.impl.AutoStunModule;
+import com.example.triggerbot.module.impl.TriggerBotModule;
 
-public class AutoJumpResetModule extends EmptyModule {
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
-    private int cooldown = 0;
-    private int pendingJump = -1;
-    private int lastHurtTime = 0;
+public class TriggerBotMod implements ClientModInitializer {
 
-    public AutoJumpResetModule() {
-        super("Auto Jump Reset");
-    }
+    private static final ModuleManager MODULE_MANAGER = ModuleManager.getInstance();
+    private static AutoStunModule AUTO_STUN;
+    private static TriggerBotModule TRIGGER;
+    private static AutoSprintModule AUTO_SPRINT;
+    private static AutoJumpResetModule AUTO_JUMP_RESET;
 
     @Override
-    public void onTick() {
-        if (cooldown > 0) cooldown--;
+    public void onInitializeClient() {
+        System.out.println("TRIGGERBOT INIT");
 
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
-        if (!isEnabled()) return;
+        AUTO_STUN = new AutoStunModule();
+        AUTO_SPRINT = new AutoSprintModule();
+        TRIGGER = new TriggerBotModule(AUTO_STUN, AUTO_SPRINT); // pass AUTO_SPRINT
+        AUTO_JUMP_RESET = new AutoJumpResetModule();
 
-        int hurtTime = mc.player.hurtTime;
-        
-        // 1. Strict Velocity Check (Vertical Only)
-        // Ensures we only jump reset when knocked UPWARDS (not when sprinting forward)
-        boolean tookVerticalKnockback = mc.player.getVelocity().y > 0.0001;
+        MODULE_MANAGER.register(AUTO_SPRINT);
+        MODULE_MANAGER.register(AUTO_STUN);
+        MODULE_MANAGER.register(TRIGGER);
+        MODULE_MANAGER.register(AUTO_JUMP_RESET);
 
-        if (hurtTime == 9 && lastHurtTime != 9 && cooldown == 0 && tookVerticalKnockback) {
-            // Random delay (0-1 ticks)
-            pendingJump = (int)(Math.random() * 2); 
-        }
-        lastHurtTime = hurtTime;
+        TRIGGER.onEnable();
+        AUTO_SPRINT.onEnable();
+        AUTO_JUMP_RESET.onEnable();
 
-        if (pendingJump >= 0) {
-            if (pendingJump == 0) {
-                // 2. Grim-Safe Packet Instantiation
-                PlayerInput current = mc.player.input.playerInput;
-                
-                // Overwrite the record to include the jump input
-                mc.player.input.playerInput = new PlayerInput(
-                    current.forward(),
-                    current.backward(),
-                    current.left(),
-                    current.right(),
-                    true, // Force Jump = TRUE
-                    current.sneak(),
-                    current.sprint()
-                );
-                
-                cooldown = 10; 
-                pendingJump = -1;
-            } else {
-                pendingJump--;
-            }
-        }
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+    MODULE_MANAGER.tickAll();
+    MODULE_MANAGER.postMovementAll();
+    MODULE_MANAGER.clientTickAll();
+});
+
     }
 
-    @Override public void onAttack() {}
-    @Override public void onClientTick() {}
-    @Override public void onJumpReset() {}
-    @Override public void onPostMovement() {}
-    @Override public void onDamage() {}
+    public static ModuleManager getModuleManager() {
+        return MODULE_MANAGER;
+    }
 }
-
