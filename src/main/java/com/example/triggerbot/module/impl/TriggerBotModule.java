@@ -25,10 +25,6 @@ public class TriggerBotModule implements ClientModule {
     private int releaseDelay = 0;
     private int itemReleaseCooldown = 0;
 
-    private float lastHealth = -1f;
-    private boolean recentlyHit = false;
-    private int hitCooldown = 0;
-
     private boolean wasAirborne = false;
     private double lastVelY = 0;
 
@@ -37,17 +33,11 @@ public class TriggerBotModule implements ClientModule {
         this.autoSprint = autoSprint;
     }
 
-    @Override
-public void onJumpReset() {}
+    @Override public void onJumpReset() {}
+    @Override public void onClientTick() {}
+    @Override public void onAttack() {}
+    @Override public void onDamage() {}
 
-@Override
-public void onClientTick() {}
-
-@Override public void onAttack() {}
-    
-@Override
-public void onDamage() {}
-    
     @Override
     public String getName() { return "TriggerBot"; }
 
@@ -57,13 +47,12 @@ public void onDamage() {}
     @Override
     public void onEnable() {
         enabled = true;
-        lastHealth = -1f;
-        recentlyHit = false;
-        hitCooldown = 0;
         wasAirborne = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
         lastProcessedTick = -1L;
+        cooldownTicks = 0;
+        releaseDelay = 0;
     }
 
     @Override
@@ -72,28 +61,13 @@ public void onDamage() {}
         cooldownTicks = 0;
         releaseDelay = 0;
         lastProcessedTick = -1L;
-        recentlyHit = false;
-        hitCooldown = 0;
         wasAirborne = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
     }
 
     @Override
-    public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (!enabled || mc.player == null) return;
-
-        float currentHealth = mc.player.getHealth();
-        if (lastHealth > 0 && currentHealth < lastHealth) {
-            recentlyHit = true;
-            hitCooldown = 12;
-        }
-        lastHealth = currentHealth;
-
-        if (hitCooldown > 0) hitCooldown--;
-        if (hitCooldown == 0) recentlyHit = false;
-    }
+    public void onTick() {}
 
     @Override
     public void onPostMovement() {
@@ -147,7 +121,6 @@ public void onDamage() {}
         if (onGround && !sprinting) return;
         if (onGround && !hasMovement) return;
         if (airborne && !falling) return;
-        if (recentlyHit && airborne && velY > -0.1) return;
 
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
@@ -177,7 +150,7 @@ public void onDamage() {}
             mc.player.swingHand(Hand.MAIN_HAND);
             cooldownTicks = 1;
             autoSprint.onAttack();
-            TriggerBotMod.getModuleManager().onAttackAll(); 
+            TriggerBotMod.getModuleManager().onAttackAll();
         }
     }
 
