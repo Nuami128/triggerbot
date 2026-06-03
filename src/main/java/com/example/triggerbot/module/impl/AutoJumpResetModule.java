@@ -5,7 +5,8 @@ import net.minecraft.client.MinecraftClient;
 
 public class AutoJumpResetModule extends EmptyModule {
 
-    private int timer = 0;
+    private int cooldown = 0;
+    private int pendingJump = -1;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -13,25 +14,33 @@ public class AutoJumpResetModule extends EmptyModule {
 
     @Override
     public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
-        if (!isEnabled()) return;
+        if (cooldown > 0) cooldown--;
 
-        timer++;
-
-        if (timer >= 10) {
-            timer = 0;
-            if (mc.player.isOnGround() && mc.player.input != null) {
-                mc.player.input.jump = true;
-            }
-        } else {
-            if (mc.player.input != null) {
-                mc.player.input.jump = false;
+        if (pendingJump > 0) {
+            pendingJump--;
+            if (pendingJump == 0) {
+                MinecraftClient mc = MinecraftClient.getInstance();
+                if (mc != null && mc.player != null && mc.player.isOnGround()) {
+                    mc.player.input.jump();
+                    cooldown = 10;
+                }
+                pendingJump = -1;
             }
         }
     }
 
-    @Override public void onAttack() {}
+    @Override
+    public void onAttack() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+        if (!isEnabled()) return;
+        if (!mc.player.isOnGround()) return;
+        if (mc.targetedEntity == null) return;
+        if (cooldown > 0) return;
+
+        pendingJump = 1 + (int)(Math.random() * 3);
+    }
+
     @Override public void onClientTick() {}
     @Override public void onJumpReset() {}
     @Override public void onPostMovement() {}
