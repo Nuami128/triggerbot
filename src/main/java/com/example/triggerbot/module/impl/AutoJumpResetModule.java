@@ -22,19 +22,24 @@ public class AutoJumpResetModule extends EmptyModule {
         if (!isEnabled()) return;
 
         int hurtTime = mc.player.hurtTime;
-        if (hurtTime == 9 && lastHurtTime != 9 && cooldown == 0) {
-            pendingJump = 1 + (int)(Math.random() * 3);
+
+        // FIX: Verify that YOUR player actually has an active attacker forcing your damage state
+        boolean isBeingAttacked = mc.player.getAttacker() != null || mc.player.getLastAttacker() != null;
+
+        if (hurtTime == 9 && lastHurtTime != 9 && cooldown == 0 && isBeingAttacked) {
+            // Safe randomizer delay of 0 to 1 ticks
+            pendingJump = (int)(Math.random() * 2); 
         }
         lastHurtTime = hurtTime;
 
-        if (pendingJump > 0) {
-            pendingJump--;
+        // Process the delayed jump
+        if (pendingJump >= 0) {
             if (pendingJump == 0) {
-                if (mc.player.isOnGround()) {
-                    mc.player.input.jump();
-                    cooldown = 10;
-                }
+                mc.player.input.jump();
+                cooldown = 10; // 10 tick cooldown to prevent false multi-jump flags
                 pendingJump = -1;
+            } else {
+                pendingJump--;
             }
         }
     }
@@ -45,3 +50,4 @@ public class AutoJumpResetModule extends EmptyModule {
     @Override public void onPostMovement() {}
     @Override public void onDamage() {}
 }
+
