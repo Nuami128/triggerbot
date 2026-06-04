@@ -5,9 +5,6 @@ import net.minecraft.client.MinecraftClient;
 
 public class AutoSprintModule extends EmptyModule {
 
-    private int attackCooldown = 0;
-    private boolean serverSprintState = false;
-
     public AutoSprintModule() {
         super("AutoSprint");
     }
@@ -16,20 +13,15 @@ public class AutoSprintModule extends EmptyModule {
     public String getName() { return "AutoSprint"; }
 
     @Override
-    public void onEnable() {
-        attackCooldown = 0;
-        serverSprintState = false;
-    }
+    public void onEnable() {}
 
     @Override
     public void onDisable() {
-        attackCooldown = 0;
-        serverSprintState = false;
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player != null) mc.player.setSprinting(false);
     }
 
-    public void onAttack() {
-        attackCooldown = 1;
-    }
+    public void onAttack() {}
 
     private boolean shouldSprint(MinecraftClient mc) {
         if (mc.player == null) return false;
@@ -49,29 +41,15 @@ public class AutoSprintModule extends EmptyModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) return;
 
-        if (attackCooldown > 0) {
-            attackCooldown--;
-            if (serverSprintState) {
-                mc.player.setSprinting(false);
-                serverSprintState = false;
-            }
-            return;
-        }
-
         boolean should = shouldSprint(mc);
 
-        if (should && !serverSprintState) {
+        if (should && !mc.player.isSprinting()) {
             mc.player.setSprinting(true);
-            serverSprintState = true;
-        } else if (!should && serverSprintState) {
+        } else if (!should && mc.player.isSprinting()) {
             mc.player.setSprinting(false);
-            serverSprintState = false;
         }
     }
 
-    @Override
-    public void onPostMovement() {}
-
-    @Override
-    public void onJumpReset() {}
+    @Override public void onPostMovement() {}
+    @Override public void onJumpReset() {}
 }
