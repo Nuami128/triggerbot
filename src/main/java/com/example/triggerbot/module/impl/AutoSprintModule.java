@@ -44,9 +44,9 @@ public class AutoSprintModule extends EmptyModule {
         boolean should = shouldSprint(mc);
 
         if (should && !mc.player.isSprinting()) {
-            mc.player.setSprinting(true);
-        } else if (!should && mc.player.isSprinting()) {
-            mc.player.setSprinting(false);
+    mc.player.input.sprintingDown = true;
+} else if (!should && mc.player.isSprinting()) {
+    mc.player.input.sprintingDown = false;
         }
     }
 
