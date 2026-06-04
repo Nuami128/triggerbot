@@ -8,7 +8,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -146,23 +145,21 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-                if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            
-            // 1. ANIMS FIRST: Vanilla always fires the hand animation packet first
+        if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
+            // 1. Swing hand first (Vanilla packet order sequence)
             mc.player.swingHand(Hand.MAIN_HAND);
 
-            // 2. FORCE VANILLA HIT DISPATCH: Let interactionManager handle packet sequencing naturally
+            // 2. Fire interaction payload via interaction manager
             mc.interactionManager.attackEntity(mc.player, target);
             
-            // 3. SILENT EXEMPTION HANDLING: Instead of hammering the server with custom stop-sprint packets, 
-            // tell your AutoSprint module to release the sprint state on the client side for a cleaner recovery curve.
+            // 3. Inform AutoSprint to pause local sprint updates safely
             autoSprint.onAttack(); 
             
-            // 4. Module State updates
+            // 4. Update core modular state loops
             cooldownTicks = 1;
             TriggerBotMod.getModuleManager().onAttackAll();
         }
-
+    }
 
     private Entity findTarget(MinecraftClient mc) {
         Vec3d eyePos = mc.player.getEyePos();
@@ -185,3 +182,4 @@ public class TriggerBotModule implements ClientModule {
         return null;
     }
 }
+
