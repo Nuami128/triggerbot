@@ -146,30 +146,23 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            // 1. Tell server we stopped sprinting BEFORE the attack hits netty (1.21.11 Yarn standard)
-            if (mc.player.isSprinting()) {
-                mc.getNetworkHandler().sendPacket(
-                    new ClientCommandC2SPacket(
-                        mc.player, 
-                        ClientCommandC2SPacket.Mode.STOP_SPRINTING
-                    )
-                );
-                mc.player.setSprinting(false);
-            }
-
-            // 2. Swing hand first (Vanilla packet sequencing order)
+                if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
+            
+            // 1. ANIMS FIRST: Vanilla always fires the hand animation packet first
             mc.player.swingHand(Hand.MAIN_HAND);
 
-            // 3. Fire interaction payload
+            // 2. FORCE VANILLA HIT DISPATCH: Let interactionManager handle packet sequencing naturally
             mc.interactionManager.attackEntity(mc.player, target);
             
-            // 4. State updates
-            cooldownTicks = 1;
+            // 3. SILENT EXEMPTION HANDLING: Instead of hammering the server with custom stop-sprint packets, 
+            // tell your AutoSprint module to release the sprint state on the client side for a cleaner recovery curve.
             autoSprint.onAttack(); 
+            
+            // 4. Module State updates
+            cooldownTicks = 1;
             TriggerBotMod.getModuleManager().onAttackAll();
         }
-    }
+
 
     private Entity findTarget(MinecraftClient mc) {
         Vec3d eyePos = mc.player.getEyePos();
