@@ -8,7 +8,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
@@ -64,6 +63,12 @@ public class TriggerBotModule implements ClientModule {
         wasAirborne = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
+        
+        // Ensure key binds are not left pressed on disable
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc != null && mc.options != null && mc.options.attackKey.isPressed()) {
+            mc.options.attackKey.setPressed(false);
+        }
     }
 
     @Override
@@ -73,8 +78,14 @@ public class TriggerBotModule implements ClientModule {
     public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        if (!enabled) return;
         if (mc.player == null || mc.world == null) return;
+        
+        // Un-press the attack key from the previous execution loop
+        if (mc.options.attackKey.isPressed() && enabled) {
+            mc.options.attackKey.setPressed(false);
+        }
+
+        if (!enabled) return;
         if (mc.currentScreen != null) return;
         if (mc.player.isDead()) return;
         if (mc.interactionManager == null) return;
@@ -146,17 +157,14 @@ public class TriggerBotModule implements ClientModule {
         }
 
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            // 1. Swing hand first (Vanilla packet order sequence)
-            mc.player.swingHand(Hand.MAIN_HAND);
-
-            // 2. Fire interaction payload via interaction manager
-            mc.interactionManager.attackEntity(mc.player, target);
+            // Emulate a vanilla click so the native client handles the packet bundle order cleanly
+            mc.options.attackKey.setPressed(true);
             
-            // 3. Inform AutoSprint to pause local sprint updates safely
+            // Back off sprinting to comply with Grim simulation
             autoSprint.onAttack(); 
             
-            // 4. Update core modular state loops
-            cooldownTicks = 1;
+            // Set cooldown to 2 ticks to allow the keybind logic space to process and reset
+            cooldownTicks = 2;
             TriggerBotMod.getModuleManager().onAttackAll();
         }
     }
