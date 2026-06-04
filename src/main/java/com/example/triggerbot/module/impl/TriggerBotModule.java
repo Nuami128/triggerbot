@@ -8,6 +8,8 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
+import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
@@ -63,11 +65,6 @@ public class TriggerBotModule implements ClientModule {
         wasAirborne = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
-
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc != null && mc.options != null && mc.options.attackKey.isPressed()) {
-            mc.options.attackKey.setPressed(false);
-        }
     }
 
     @Override
@@ -77,14 +74,8 @@ public class TriggerBotModule implements ClientModule {
     public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        if (mc.player == null || mc.world == null) return;
-
-        // Clean up emulated key states safely
-        if (mc.options.attackKey.isPressed() && enabled) {
-            mc.options.attackKey.setPressed(false);
-        }
-
         if (!enabled) return;
+        if (mc.player == null || mc.world == null) return;
         if (mc.currentScreen != null) return;
         if (mc.player.isDead()) return;
         if (mc.interactionManager == null) return;
@@ -155,21 +146,29 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-                if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            // 1. Sync option arrays to register the click intent
-            mc.options.attackKey.setPressed(true);
+        if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
+            // 1. VANILLA SPRINT STOP: Force packet order sequence matching vanilla logic
+            if (mc.player.isSprinting()) {
+                mc.getNetworkHandler().sendPacket(
+                    new ClientCommandC2SPacket(
+                        mc.player, 
+                        ClientCommandC2SPacket.Mode.STOP_SPRINTING
+                    )
+                );
+                mc.player.setSprinting(false);
+            }
+
+            // 2. ANIMATIONS FIRST: Avoids PacketOrder validation anomalies
+            mc.player.swingHand(Hand.MAIN_HAND);
+
+            // 3. SECURE DAMAGE INTERACTION: Directly fires public pipeline
+            mc.interactionManager.attackEntity(mc.player, target);
             
-            // 2. FORCE EXECUTIONS: Call the public vanilla attack handler.
-            // This natively executes animations, handles sprint states, and dispatches perfect packets.
-            mc.doAttack();
-            
-            // 3. Keep AutoSprint protected
+            // 4. RESET STATE: Tells AutoSprint module to delay next sprint checks
             autoSprint.onAttack(); 
-            
-            // 4. State adjustments
-            cooldownTicks = 2;
+            cooldownTicks = 1;
             TriggerBotMod.getModuleManager().onAttackAll();
-        }          
+        }
     }
 
     private Entity findTarget(MinecraftClient mc) {
