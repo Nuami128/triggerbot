@@ -10,7 +10,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayerEntity.class)
 public class ClientPlayerTickMixin {
 
-    // 1. Run all standard tick tasks (like AutoSprint) BEFORE movement packets are calculated
     @Inject(
         method = "tick",
         at = @At(
@@ -22,19 +21,6 @@ public class ClientPlayerTickMixin {
     )
     private void beforeMovementPackets(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().tickAll();
-    }
-
-    // 2. Fire the TriggerBot attack sequence immediately AFTER movement packets are sent
-    @Inject(
-        method = "tick",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/network/ClientPlayerEntity;sendMovementPackets()V",
-            shift = At.Shift.AFTER
-        ),
-        remap = true
-    )
-    private void afterMovementPackets(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 }
