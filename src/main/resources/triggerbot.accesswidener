@@ -1,4 +1,3 @@
 accessWidener v2 named
 
 accessible method net/minecraft/client/input/Input jump ()V
-accessible field net/minecraft/client/input/Input sprintingDown Z
