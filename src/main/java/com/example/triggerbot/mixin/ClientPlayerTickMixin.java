@@ -20,8 +20,10 @@ public class ClientPlayerTickMixin {
         remap = true
     )
     private void beforeMovementPackets(CallbackInfo ci) {
-        // Run calculations, update sprint requirements, and handle click emulation in order
+        // 1. Process movement and auto-sprint status loops
         TriggerBotMod.getModuleManager().tickAll();
+        
+        // 2. Scan and execute target interactions immediately after, BEFORE positions finalize
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 }
