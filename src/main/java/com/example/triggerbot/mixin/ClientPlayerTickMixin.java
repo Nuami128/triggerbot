@@ -20,6 +20,7 @@ public class ClientPlayerTickMixin {
         remap = true
     )
     private void beforeMovementPackets(CallbackInfo ci) {
+        // Run calculations, update sprint requirements, and handle click emulation in order
         TriggerBotMod.getModuleManager().tickAll();
         TriggerBotMod.getModuleManager().postMovementAll();
     }
