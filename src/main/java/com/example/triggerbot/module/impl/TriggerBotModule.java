@@ -155,12 +155,13 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            // 1. Sync option arrays
+                if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
+            // 1. Sync option arrays to register the click intent
             mc.options.attackKey.setPressed(true);
             
-            // 2. FORCE EXECUTIONS: Instruct vanilla to process interaction ticks immediately 
-            mc.handleBlockBreaking(true);
+            // 2. FORCE EXECUTIONS: Call the public vanilla attack handler.
+            // This natively executes animations, handles sprint states, and dispatches perfect packets.
+            mc.doAttack();
             
             // 3. Keep AutoSprint protected
             autoSprint.onAttack(); 
@@ -168,7 +169,7 @@ public class TriggerBotModule implements ClientModule {
             // 4. State adjustments
             cooldownTicks = 2;
             TriggerBotMod.getModuleManager().onAttackAll();
-        }
+        }          
     }
 
     private Entity findTarget(MinecraftClient mc) {
