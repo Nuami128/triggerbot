@@ -63,8 +63,7 @@ public class TriggerBotModule implements ClientModule {
         wasAirborne = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
-        
-        // Ensure key binds are not left pressed on disable
+
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc != null && mc.options != null && mc.options.attackKey.isPressed()) {
             mc.options.attackKey.setPressed(false);
@@ -79,8 +78,8 @@ public class TriggerBotModule implements ClientModule {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (mc.player == null || mc.world == null) return;
-        
-        // Un-press the attack key from the previous execution loop
+
+        // Clean up emulated key states safely
         if (mc.options.attackKey.isPressed() && enabled) {
             mc.options.attackKey.setPressed(false);
         }
@@ -142,48 +141,7 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
-
-        Entity target = findTarget(mc);
-        if (target == null) return;
-
-        if (target instanceof PlayerEntity pe
-                && pe.isBlocking()
-                && CombatUtil.isFacingUs(mc, target)
-                && !autoStun.isEnabled()) {
-            autoStun.onEnable();
-            cooldownTicks = 1;
-            return;
-        }
-
-        if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            // Emulate a vanilla click so the native client handles the packet bundle order cleanly
-            mc.options.attackKey.setPressed(true);
-            
-            // Back off sprinting to comply with Grim simulation
-            autoSprint.onAttack(); 
-            
-            // Set cooldown to 2 ticks to allow the keybind logic space to process and reset
-            cooldownTicks = 2;
-            TriggerBotMod.getModuleManager().onAttackAll();
-        }
-    }
-
-    private Entity findTarget(MinecraftClient mc) {
-        Vec3d eyePos = mc.player.getEyePos();
-        Vec3d look = mc.player.getRotationVec(1.0f);
-        Vec3d reachVec = eyePos.add(look.multiply(3.0));
-
-        for (Entity e : mc.world.getEntities()) {
-            if (!(e instanceof LivingEntity)) continue;
-            if (e == mc.player) continue;
-            if (!e.isAlive()) continue;
-            if (e.isRemoved()) continue;
-            if (e.isSpectator()) continue;
-            if (!CombatUtil.isInReach(mc, e)) continue;
-
-            Box box = e.getBoundingBox();
-            Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
+        if (mc.player.getAttackCooldownProgress(1.0f)  hit = box.raycast(eyePos, reachVec);
             if (hit.isPresent()) return e;
         }
 
