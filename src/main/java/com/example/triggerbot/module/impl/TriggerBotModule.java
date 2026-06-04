@@ -145,8 +145,8 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-                if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            // 1. Tell the server we stopped sprinting BEFORE the hit records
+        if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
+            // 1. Tell server we stopped sprinting BEFORE the attack hits netty
             if (mc.player.isSprinting()) {
                 mc.getNetworkHandler().sendPacket(
                     new net.minecraft.network.packet.c2s.play.ServerboundClientCommandPacket(
@@ -157,14 +157,38 @@ public class TriggerBotModule implements ClientModule {
                 mc.player.setSprinting(false);
             }
 
-            // 2. Animate hand BEFORE sending the interact payload
+            // 2. Swing hand first (Vanilla packet sequencing order)
             mc.player.swingHand(Hand.MAIN_HAND);
 
-            // 3. Execute interaction
+            // 3. Fire interaction payload
             mc.interactionManager.attackEntity(mc.player, target);
             
-            // 4. Cool downs and triggers
+            // 4. State updates
             cooldownTicks = 1;
-            autoSprint.onAttack(); // Safely buffers the auto-sprint module
+            autoSprint.onAttack(); 
             TriggerBotMod.getModuleManager().onAttackAll();
         }
+    }
+
+    private Entity findTarget(MinecraftClient mc) {
+        Vec3d eyePos = mc.player.getEyePos();
+        Vec3d look = mc.player.getRotationVec(1.0f);
+        Vec3d reachVec = eyePos.add(look.multiply(3.0));
+
+        for (Entity e : mc.world.getEntities()) {
+            if (!(e instanceof LivingEntity)) continue;
+            if (e == mc.player) continue;
+            if (!e.isAlive()) continue;
+            if (e.isRemoved()) continue;
+            if (e.isSpectator()) continue;
+            if (!CombatUtil.isInReach(mc, e)) continue;
+
+            Box box = e.getBoundingBox();
+            Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
+            if (hit.isPresent()) return e;
+        }
+
+        return null;
+    }
+}
+
