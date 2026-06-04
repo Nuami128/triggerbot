@@ -71,6 +71,7 @@ public class TriggerBotModule implements ClientModule {
 
     @Override
     public void onPostMovement() {
+        if (true) return; // temporary test
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (!enabled) return;
