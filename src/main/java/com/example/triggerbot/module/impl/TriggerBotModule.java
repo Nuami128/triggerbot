@@ -8,6 +8,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -146,12 +147,12 @@ public class TriggerBotModule implements ClientModule {
         }
 
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            // 1. Tell server we stopped sprinting BEFORE the attack hits netty
+            // 1. Tell server we stopped sprinting BEFORE the attack hits netty (1.21.11 Yarn standard)
             if (mc.player.isSprinting()) {
                 mc.getNetworkHandler().sendPacket(
-                    new net.minecraft.network.packet.c2s.play.ServerboundClientCommandPacket(
+                    new ClientCommandC2SPacket(
                         mc.player, 
-                        net.minecraft.network.packet.c2s.play.ServerboundClientCommandPacket.Mode.STOP_SPRINTING
+                        ClientCommandC2SPacket.Mode.STOP_SPRINTING
                     )
                 );
                 mc.player.setSprinting(false);
@@ -191,4 +192,3 @@ public class TriggerBotModule implements ClientModule {
         return null;
     }
 }
-
