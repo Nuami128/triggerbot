@@ -16,22 +16,14 @@ public class AutoSprintModule extends EmptyModule {
     public void onEnable() {}
 
     @Override
-    public void onDisable() {}
+    public void onDisable() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc != null && mc.player != null) {
+            mc.player.setSprinting(false);
+        }
+    }
 
     public void onAttack() {}
-
-    private boolean shouldSprint(MinecraftClient mc) {
-        if (mc.player == null) return false;
-        if (mc.currentScreen != null) return false;
-        if (mc.player.isDead()) return false;
-        if (mc.player.isUsingItem()) return false;
-        if (mc.player.isBlocking()) return false;
-        if (mc.player.isTouchingWater()) return false;
-        if (mc.player.getHungerManager().getFoodLevel() <= 6) return false;
-        if (!mc.options.forwardKey.isPressed()) return false;
-        if (mc.player.getAttackCooldownProgress(0f) < 1.0f) return false;
-        return true;
-    }
 
     @Override
     public void onTick() {
@@ -39,7 +31,7 @@ public class AutoSprintModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (!isEnabled()) return;
 
-        if (shouldSprint(mc) && !mc.player.isSprinting()) {
+        if (mc.options.forwardKey.isPressed() && !mc.player.isSprinting()) {
             mc.player.setSprinting(true);
         }
     }
