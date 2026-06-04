@@ -141,7 +141,51 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        if (mc.player.getAttackCooldownProgress(1.0f)  hit = box.raycast(eyePos, reachVec);
+        if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
+
+        Entity target = findTarget(mc);
+        if (target == null) return;
+
+        if (target instanceof PlayerEntity pe
+                && pe.isBlocking()
+                && CombatUtil.isFacingUs(mc, target)
+                && !autoStun.isEnabled()) {
+            autoStun.onEnable();
+            cooldownTicks = 1;
+            return;
+        }
+
+        if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
+            // 1. Sync option arrays
+            mc.options.attackKey.setPressed(true);
+            
+            // 2. FORCE EXECUTIONS: Instruct vanilla to process interaction ticks immediately 
+            mc.handleBlockBreaking(true);
+            
+            // 3. Keep AutoSprint protected
+            autoSprint.onAttack(); 
+            
+            // 4. State adjustments
+            cooldownTicks = 2;
+            TriggerBotMod.getModuleManager().onAttackAll();
+        }
+    }
+
+    private Entity findTarget(MinecraftClient mc) {
+        Vec3d eyePos = mc.player.getEyePos();
+        Vec3d look = mc.player.getRotationVec(1.0f);
+        Vec3d reachVec = eyePos.add(look.multiply(3.0));
+
+        for (Entity e : mc.world.getEntities()) {
+            if (!(e instanceof LivingEntity)) continue;
+            if (e == mc.player) continue;
+            if (!e.isAlive()) continue;
+            if (e.isRemoved()) continue;
+            if (e.isSpectator()) continue;
+            if (!CombatUtil.isInReach(mc, e)) continue;
+
+            Box box = e.getBoundingBox();
+            Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
             if (hit.isPresent()) return e;
         }
 
