@@ -18,7 +18,9 @@ public class AutoSprintModule extends EmptyModule {
     @Override
     public void onDisable() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player != null) mc.player.setSprinting(false);
+        if (mc != null && mc.options != null) {
+            mc.options.sprintKey.setPressed(false);
+        }
     }
 
     public void onAttack() {}
@@ -39,15 +41,10 @@ public class AutoSprintModule extends EmptyModule {
     @Override
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return;
+        if (mc == null || mc.player == null) return;
 
         boolean should = shouldSprint(mc);
-
-        if (should && !mc.player.isSprinting()) {
-    mc.player.input.sprintingDown = true;
-} else if (!should && mc.player.isSprinting()) {
-    mc.player.input.sprintingDown = false;
-        }
+        mc.options.sprintKey.setPressed(should);
     }
 
     @Override public void onPostMovement() {}
