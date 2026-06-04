@@ -15,8 +15,8 @@ public class ClientPlayerTickMixin {
         TriggerBotMod.getModuleManager().tickAll();
     }
 
-    @Inject(method = "sendMovementPackets", at = @At("HEAD"))
-    private void onPreMovementPackets(CallbackInfo ci) {
+    @Inject(method = "sendMovementPackets", at = @At("TAIL"))
+    private void onPostMovementPackets(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 }
