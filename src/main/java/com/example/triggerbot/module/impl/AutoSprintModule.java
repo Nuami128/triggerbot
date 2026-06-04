@@ -51,7 +51,7 @@ public class AutoSprintModule extends EmptyModule {
         if (mc.options.forwardKey.isPressed() 
                 && !mc.player.isSprinting() 
                 && !mc.player.isUsingItem() 
-                && !mc.player.isHorizontalCollision()
+                && !mc.player.horizontalCollision // Fixed: Removed method call and swapped to Yarn variable structure
                 && mc.player.getHungerManager().getFoodLevel() > 6) {
             
             // Set the vanilla client's intentional sprint key state change
