@@ -9,10 +9,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Vec3d;
-
-import java.util.Optional;
 
 public class TriggerBotModule implements ClientModule {
 
@@ -28,9 +24,6 @@ public class TriggerBotModule implements ClientModule {
     private double lastVelY = 0;
     private int sprintTicks = 0;
 
-    private boolean pendingGroundAttack = false;
-    private Entity queuedGroundTarget = null;
-
     public TriggerBotModule(AutoStunModule autoStun, AutoSprintModule autoSprint) {
         this.autoStun = autoStun;
         this.autoSprint = autoSprint;
@@ -40,7 +33,6 @@ public class TriggerBotModule implements ClientModule {
     @Override public void onClientTick() {}
     @Override public void onAttack() {}
     @Override public void onDamage() {}
-
     @Override public String getName() { return "TriggerBot"; }
     @Override public boolean isEnabled() { return enabled; }
 
@@ -54,8 +46,6 @@ public class TriggerBotModule implements ClientModule {
         cooldownTicks = 0;
         releaseDelay = 0;
         sprintTicks = 0;
-        pendingGroundAttack = false;
-        queuedGroundTarget = null;
     }
 
     @Override
@@ -68,8 +58,6 @@ public class TriggerBotModule implements ClientModule {
         lastVelY = 0;
         itemReleaseCooldown = 0;
         sprintTicks = 0;
-        pendingGroundAttack = false;
-        queuedGroundTarget = null;
     }
 
     @Override
@@ -84,21 +72,6 @@ public class TriggerBotModule implements ClientModule {
         if (mc.player.isDead()) return;
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
-
-        // Fire pending ground attack from last tick
-        if (pendingGroundAttack && queuedGroundTarget != null) {
-            Entity t = queuedGroundTarget;
-            pendingGroundAttack = false;
-            queuedGroundTarget = null;
-            if (t.isAlive() && !t.isRemoved() && CombatUtil.isInReach(mc, t)) {
-                // invokeDoAttack = identical code path to a manual click
-                ((MinecraftClientAccessor) mc).invokeDoAttack();
-                cooldownTicks = 1;
-                autoSprint.onAttack();
-                TriggerBotMod.getModuleManager().onAttackAll();
-            }
-            return;
-        }
 
         if (mc.player.isUsingItem()) {
             itemReleaseCooldown = 3;
@@ -153,8 +126,15 @@ public class TriggerBotModule implements ClientModule {
 
         if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
 
-        Entity target = findTarget(mc);
+        // Use mc.targetedEntity directly — this is exactly what Minecraft's
+        // own doAttack uses internally. No separate raycast needed.
+        // invokeDoAttack() will use the same target, so packet state is identical
+        // to a manual click. No desync.
+        Entity target = mc.targetedEntity;
         if (target == null) return;
+        if (!(target instanceof LivingEntity)) return;
+        if (!target.isAlive() || target.isRemoved()) return;
+        if (!CombatUtil.isInReach(mc, target)) return;
 
         if (target instanceof PlayerEntity pe && pe.isBlocking()
                 && CombatUtil.isFacingUs(mc, target) && !autoStun.isEnabled()) {
@@ -163,38 +143,10 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        if (!target.isAlive() || target.isRemoved() || !CombatUtil.isInReach(mc, target)) return;
-
-        if (airborne) {
-            // Crit: fire immediately via doAttack — same path as manual click
-            ((MinecraftClientAccessor) mc).invokeDoAttack();
-            cooldownTicks = 1;
-            autoSprint.onAttack();
-            TriggerBotMod.getModuleManager().onAttackAll();
-        } else {
-            // Ground: queue for next tick
-            pendingGroundAttack = true;
-            queuedGroundTarget = target;
-        }
-    }
-
-    private Entity findTarget(MinecraftClient mc) {
-        Vec3d eyePos = mc.player.getEyePos();
-        Vec3d look = mc.player.getRotationVec(1.0f);
-        Vec3d reachVec = eyePos.add(look.multiply(3.0));
-
-        for (Entity e : mc.world.getEntities()) {
-            if (!(e instanceof LivingEntity)) continue;
-            if (e == mc.player) continue;
-            if (!e.isAlive()) continue;
-            if (e.isRemoved()) continue;
-            if (e.isSpectator()) continue;
-            if (!CombatUtil.isInReach(mc, e)) continue;
-
-            Box box = e.getBoundingBox();
-            Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
-            if (hit.isPresent()) return e;
-        }
-        return null;
+        // invokeDoAttack = identical to manual left click, Grim cannot distinguish
+        ((MinecraftClientAccessor) mc).invokeDoAttack();
+        cooldownTicks = 1;
+        autoSprint.onAttack();
+        TriggerBotMod.getModuleManager().onAttackAll();
     }
 }
