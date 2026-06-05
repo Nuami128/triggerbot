@@ -24,10 +24,13 @@ public class TriggerBotModule implements ClientModule {
     private int cooldownTicks = 0;
     private int releaseDelay = 0;
     private int itemReleaseCooldown = 0;
-
     private boolean wasAirborne = false;
     private double lastVelY = 0;
     private int sprintTicks = 0;
+
+    // 1-tick ground attack delay
+    private boolean pendingGroundAttack = false;
+    private Entity queuedGroundTarget = null;
 
     public TriggerBotModule(AutoStunModule autoStun, AutoSprintModule autoSprint) {
         this.autoStun = autoStun;
@@ -39,11 +42,8 @@ public class TriggerBotModule implements ClientModule {
     @Override public void onAttack() {}
     @Override public void onDamage() {}
 
-    @Override
-    public String getName() { return "TriggerBot"; }
-
-    @Override
-    public boolean isEnabled() { return enabled; }
+    @Override public String getName() { return "TriggerBot"; }
+    @Override public boolean isEnabled() { return enabled; }
 
     @Override
     public void onEnable() {
@@ -55,6 +55,8 @@ public class TriggerBotModule implements ClientModule {
         cooldownTicks = 0;
         releaseDelay = 0;
         sprintTicks = 0;
+        pendingGroundAttack = false;
+        queuedGroundTarget = null;
     }
 
     @Override
@@ -67,21 +69,39 @@ public class TriggerBotModule implements ClientModule {
         lastVelY = 0;
         itemReleaseCooldown = 0;
         sprintTicks = 0;
+        pendingGroundAttack = false;
+        queuedGroundTarget = null;
     }
 
     @Override
-    public void onTick() {}
+    public void onTick() {
+        // No logic here — everything is driven by onPostMovement
+    }
 
     @Override
     public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
-
         if (!enabled) return;
         if (mc.player == null || mc.world == null) return;
         if (mc.currentScreen != null) return;
         if (mc.player.isDead()) return;
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
+
+        // Fire any pending ground attack from last tick first
+        if (pendingGroundAttack && queuedGroundTarget != null) {
+            Entity t = queuedGroundTarget;
+            pendingGroundAttack = false;
+            queuedGroundTarget = null;
+            if (t.isAlive() && !t.isRemoved() && CombatUtil.isInReach(mc, t)) {
+                mc.interactionManager.attackEntity(mc.player, t);
+                mc.player.swingHand(Hand.MAIN_HAND);
+                cooldownTicks = 1;
+                autoSprint.onAttack();
+                TriggerBotMod.getModuleManager().onAttackAll();
+            }
+            return; // One action per tick
+        }
 
         if (mc.player.isUsingItem()) {
             itemReleaseCooldown = 3;
@@ -95,7 +115,6 @@ public class TriggerBotModule implements ClientModule {
             releaseDelay = 2;
             return;
         }
-
         if (releaseDelay > 0) {
             releaseDelay--;
             return;
@@ -107,7 +126,6 @@ public class TriggerBotModule implements ClientModule {
         double velY = mc.player.getVelocity().y;
         double velX = mc.player.getVelocity().x;
         double velZ = mc.player.getVelocity().z;
-
         boolean onGround = mc.player.isOnGround();
         boolean ascending = velY > 0;
         boolean airborne = !onGround;
@@ -144,21 +162,26 @@ public class TriggerBotModule implements ClientModule {
         Entity target = findTarget(mc);
         if (target == null) return;
 
-        if (target instanceof PlayerEntity pe
-                && pe.isBlocking()
-                && CombatUtil.isFacingUs(mc, target)
-                && !autoStun.isEnabled()) {
+        if (target instanceof PlayerEntity pe && pe.isBlocking()
+                && CombatUtil.isFacingUs(mc, target) && !autoStun.isEnabled()) {
             autoStun.onEnable();
             cooldownTicks = 1;
             return;
         }
 
-        if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
+        if (!target.isAlive() || target.isRemoved() || !CombatUtil.isInReach(mc, target)) return;
+
+        if (airborne) {
+            // Crits: fire immediately, no delay
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(Hand.MAIN_HAND);
             cooldownTicks = 1;
             autoSprint.onAttack();
             TriggerBotMod.getModuleManager().onAttackAll();
+        } else {
+            // Ground attacks: queue for next tick to let movement settle
+            pendingGroundAttack = true;
+            queuedGroundTarget = target;
         }
     }
 
@@ -179,7 +202,6 @@ public class TriggerBotModule implements ClientModule {
             Optional<Vec3d> hit = box.raycast(eyePos, reachVec);
             if (hit.isPresent()) return e;
         }
-
         return null;
     }
 }
