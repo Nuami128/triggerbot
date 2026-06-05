@@ -146,11 +146,10 @@ public class TriggerBotModule implements ClientModule {
         }
 
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            mc.interactionManager.attackEntity(mc.player, target);
-            mc.player.swingHand(Hand.MAIN_HAND);
-            cooldownTicks = 1;
-            autoSprint.onAttack();
-            TriggerBotMod.getModuleManager().onAttackAll();
+    ((MinecraftClientAccessor) mc).invokeDoAttack();
+    cooldownTicks = 1;
+    autoSprint.onAttack();
+    TriggerBotMod.getModuleManager().onAttackAll();
         }
     }
 
