@@ -1,6 +1,5 @@
 package com.example.triggerbot.module.impl;
 
-import com.example.triggerbot.mixin.MinecraftClientAccessor;
 import com.example.triggerbot.TriggerBotMod;
 import com.example.triggerbot.module.ClientModule;
 import com.example.triggerbot.util.CombatUtil;
@@ -28,6 +27,7 @@ public class TriggerBotModule implements ClientModule {
 
     private boolean wasAirborne = false;
     private double lastVelY = 0;
+    private int sprintTicks = 0;
 
     public TriggerBotModule(AutoStunModule autoStun, AutoSprintModule autoSprint) {
         this.autoStun = autoStun;
@@ -54,6 +54,7 @@ public class TriggerBotModule implements ClientModule {
         lastProcessedTick = -1L;
         cooldownTicks = 0;
         releaseDelay = 0;
+        sprintTicks = 0;
     }
 
     @Override
@@ -65,6 +66,7 @@ public class TriggerBotModule implements ClientModule {
         wasAirborne = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
+        sprintTicks = 0;
     }
 
     @Override
@@ -118,8 +120,15 @@ public class TriggerBotModule implements ClientModule {
         wasAirborne = airborne;
         lastVelY = velY;
 
+        if (sprinting) {
+            sprintTicks++;
+        } else {
+            sprintTicks = 0;
+        }
+
         if (ascending) return;
         if (onGround && !sprinting) return;
+        if (onGround && sprintTicks < 1) return;
         if (onGround && !hasMovement) return;
         if (airborne && !falling) return;
 
@@ -147,11 +156,11 @@ public class TriggerBotModule implements ClientModule {
         }
 
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-    mc.interactionManager.attackEntity(mc.player, target);
-    mc.player.swingHand(Hand.MAIN_HAND);
-    cooldownTicks = 1;
-    autoSprint.onAttack();
-    TriggerBotMod.getModuleManager().onAttackAll();
+            mc.interactionManager.attackEntity(mc.player, target);
+            mc.player.swingHand(Hand.MAIN_HAND);
+            cooldownTicks = 1;
+            autoSprint.onAttack();
+            TriggerBotMod.getModuleManager().onAttackAll();
         }
     }
 
