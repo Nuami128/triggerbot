@@ -156,7 +156,6 @@ public class TriggerBotModule implements ClientModule {
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(Hand.MAIN_HAND);
-            mc.player.setSprinting(false);
             cooldownTicks = 1;
             autoSprint.onAttack();
             TriggerBotMod.getModuleManager().onAttackAll();
