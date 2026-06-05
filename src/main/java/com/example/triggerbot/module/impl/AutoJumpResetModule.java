@@ -29,8 +29,9 @@ public class AutoJumpResetModule extends EmptyModule {
         lastHurtTime = 0;
     }
 
+    // Run from clientTickAll (END_CLIENT_TICK) — hurtTime is fully updated here
     @Override
-    public void onTick() {
+    public void onClientTick() {
         if (!isEnabled()) return;
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
@@ -39,10 +40,9 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurtTime = mc.player.hurtTime;
 
-        // Trigger on the leading edge of hurtTime going UP (got hit)
-        // hurtTime jumps to 10 the tick you're hit, then counts down
-        if (hurtTime > lastHurtTime && hurtTime == 10 && cooldown == 0) {
-            pendingJump = 1 + (int)(Math.random() * 2);
+        // hurtTime jumps UP to 10 the exact tick a hit registers
+        if (hurtTime == 10 && lastHurtTime < 10 && cooldown == 0) {
+            pendingJump = 1; // fire next client tick
         }
         lastHurtTime = hurtTime;
 
@@ -58,8 +58,8 @@ public class AutoJumpResetModule extends EmptyModule {
         }
     }
 
+    @Override public void onTick() {}
     @Override public void onAttack() {}
-    @Override public void onClientTick() {}
     @Override public void onJumpReset() {}
     @Override public void onPostMovement() {}
     @Override public void onDamage() {}
