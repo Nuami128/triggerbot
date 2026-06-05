@@ -1,6 +1,7 @@
 package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.TriggerBotMod;
+import com.example.triggerbot.mixin.MinecraftClientAccessor;
 import com.example.triggerbot.module.ClientModule;
 import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
@@ -8,7 +9,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
@@ -28,7 +28,6 @@ public class TriggerBotModule implements ClientModule {
     private double lastVelY = 0;
     private int sprintTicks = 0;
 
-    // 1-tick ground attack delay
     private boolean pendingGroundAttack = false;
     private Entity queuedGroundTarget = null;
 
@@ -74,9 +73,7 @@ public class TriggerBotModule implements ClientModule {
     }
 
     @Override
-    public void onTick() {
-        // No logic here — everything is driven by onPostMovement
-    }
+    public void onTick() {}
 
     @Override
     public void onPostMovement() {
@@ -88,19 +85,19 @@ public class TriggerBotModule implements ClientModule {
         if (mc.interactionManager == null) return;
         if (mc.getNetworkHandler() == null) return;
 
-        // Fire any pending ground attack from last tick first
+        // Fire pending ground attack from last tick
         if (pendingGroundAttack && queuedGroundTarget != null) {
             Entity t = queuedGroundTarget;
             pendingGroundAttack = false;
             queuedGroundTarget = null;
             if (t.isAlive() && !t.isRemoved() && CombatUtil.isInReach(mc, t)) {
-                mc.interactionManager.attackEntity(mc.player, t);
-                mc.player.swingHand(Hand.MAIN_HAND);
+                // invokeDoAttack = identical code path to a manual click
+                ((MinecraftClientAccessor) mc).invokeDoAttack();
                 cooldownTicks = 1;
                 autoSprint.onAttack();
                 TriggerBotMod.getModuleManager().onAttackAll();
             }
-            return; // One action per tick
+            return;
         }
 
         if (mc.player.isUsingItem()) {
@@ -136,11 +133,8 @@ public class TriggerBotModule implements ClientModule {
         wasAirborne = airborne;
         lastVelY = velY;
 
-        if (sprinting) {
-            sprintTicks++;
-        } else {
-            sprintTicks = 0;
-        }
+        if (sprinting) sprintTicks++;
+        else sprintTicks = 0;
 
         if (ascending) return;
         if (onGround && !sprinting) return;
@@ -172,14 +166,13 @@ public class TriggerBotModule implements ClientModule {
         if (!target.isAlive() || target.isRemoved() || !CombatUtil.isInReach(mc, target)) return;
 
         if (airborne) {
-            // Crits: fire immediately, no delay
-            mc.interactionManager.attackEntity(mc.player, target);
-            mc.player.swingHand(Hand.MAIN_HAND);
+            // Crit: fire immediately via doAttack — same path as manual click
+            ((MinecraftClientAccessor) mc).invokeDoAttack();
             cooldownTicks = 1;
             autoSprint.onAttack();
             TriggerBotMod.getModuleManager().onAttackAll();
         } else {
-            // Ground attacks: queue for next tick to let movement settle
+            // Ground: queue for next tick
             pendingGroundAttack = true;
             queuedGroundTarget = target;
         }
