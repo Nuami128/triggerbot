@@ -21,8 +21,8 @@ public class TriggerBotModule implements ClientModule {
     private int releaseDelay = 0;
     private int itemReleaseCooldown = 0;
     private boolean wasAirborne = false;
+    private boolean wasSprintingLastTick = false;
     private double lastVelY = 0;
-    private int sprintTicks = 0;
 
     public TriggerBotModule(AutoStunModule autoStun, AutoSprintModule autoSprint) {
         this.autoStun = autoStun;
@@ -40,12 +40,12 @@ public class TriggerBotModule implements ClientModule {
     public void onEnable() {
         enabled = true;
         wasAirborne = false;
+        wasSprintingLastTick = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
         lastProcessedTick = -1L;
         cooldownTicks = 0;
         releaseDelay = 0;
-        sprintTicks = 0;
     }
 
     @Override
@@ -55,9 +55,9 @@ public class TriggerBotModule implements ClientModule {
         releaseDelay = 0;
         lastProcessedTick = -1L;
         wasAirborne = false;
+        wasSprintingLastTick = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
-        sprintTicks = 0;
     }
 
     @Override
@@ -80,7 +80,6 @@ public class TriggerBotModule implements ClientModule {
             itemReleaseCooldown--;
             return;
         }
-
         if (CombatUtil.isPlayerBusy(mc)) {
             releaseDelay = 2;
             return;
@@ -103,17 +102,20 @@ public class TriggerBotModule implements ClientModule {
         boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
         boolean falling = (velY <= -0.1) || (wasAirborne && lastVelY <= -0.1);
 
+        // Ground sprint hit: fire on the tick sprint is released.
+        // wasSprintingLastTick=true + sprinting=false means AutoSprint just
+        // dropped the sprint key this tick. Grim sees: sprinting → sprint-break
+        // → attack, which is physically identical to a real player's sprint hit.
+        boolean groundSprintHit = onGround && hasMovement && wasSprintingLastTick && !sprinting;
+
+        // Update state AFTER reading it for this tick's decision
         wasAirborne = airborne;
+        wasSprintingLastTick = sprinting;
         lastVelY = velY;
 
-        if (sprinting) sprintTicks++;
-        else sprintTicks = 0;
-
         if (ascending) return;
-        if (onGround && !sprinting) return;
-        if (onGround && sprintTicks < 1) return;
-        if (onGround && !hasMovement) return;
         if (airborne && !falling) return;
+        if (onGround && !groundSprintHit) return;
 
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
@@ -123,19 +125,13 @@ public class TriggerBotModule implements ClientModule {
             cooldownTicks--;
             return;
         }
-
         if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
 
-        // Use mc.targetedEntity directly — this is exactly what Minecraft's
-        // own doAttack uses internally. No separate raycast needed.
-        // invokeDoAttack() will use the same target, so packet state is identical
-        // to a manual click. No desync.
         Entity target = mc.targetedEntity;
         if (target == null) return;
         if (!(target instanceof LivingEntity)) return;
         if (!target.isAlive() || target.isRemoved()) return;
         if (!CombatUtil.isInReach(mc, target)) return;
-
         if (target instanceof PlayerEntity pe && pe.isBlocking()
                 && CombatUtil.isFacingUs(mc, target) && !autoStun.isEnabled()) {
             autoStun.onEnable();
@@ -143,7 +139,6 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // invokeDoAttack = identical to manual left click, Grim cannot distinguish
         ((MinecraftClientAccessor) mc).invokeDoAttack();
         cooldownTicks = 1;
         autoSprint.onAttack();
