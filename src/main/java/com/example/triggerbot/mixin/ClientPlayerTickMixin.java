@@ -21,18 +21,6 @@ public class ClientPlayerTickMixin {
     )
     private void beforeMovementPackets(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().tickAll();
+        TriggerBotMod.getModuleManager().postMovementAll();
     }
-
-    @Inject(
-    method = "tick",
-    at = @At(
-        value = "INVOKE",
-        target = "Lnet/minecraft/client/network/ClientPlayerEntity;sendMovementPackets()V",
-        shift = At.Shift.BEFORE
-    ),
-    remap = true
-)
-private void beforeMovementPackets(CallbackInfo ci) {
-    TriggerBotMod.getModuleManager().tickAll();
-    TriggerBotMod.getModuleManager().postMovementAll();
 }
