@@ -32,21 +32,20 @@ public class AutoJumpResetModule extends EmptyModule {
     @Override
     public void onTick() {
         if (!isEnabled()) return;
-
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
 
         if (cooldown > 0) cooldown--;
 
-        // Detect when we just got hit (hurtTime transitions to 10)
         int hurtTime = mc.player.hurtTime;
-        if (hurtTime == 10 && lastHurtTime != 10 && cooldown == 0) {
-            // Queue a jump with 1-2 tick random delay
+
+        // Trigger on the leading edge of hurtTime going UP (got hit)
+        // hurtTime jumps to 10 the tick you're hit, then counts down
+        if (hurtTime > lastHurtTime && hurtTime == 10 && cooldown == 0) {
             pendingJump = 1 + (int)(Math.random() * 2);
         }
         lastHurtTime = hurtTime;
 
-        // Process the pending jump
         if (pendingJump > 0) {
             pendingJump--;
             if (pendingJump == 0) {
