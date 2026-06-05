@@ -23,14 +23,16 @@ public class TriggerBotMod implements ClientModInitializer {
 
         AUTO_STUN = new AutoStunModule();
         AUTO_SPRINT = new AutoSprintModule();
-        TRIGGER = new TriggerBotModule(AUTO_STUN, AUTO_SPRINT); 
+        TRIGGER = new TriggerBotModule(AUTO_STUN, AUTO_SPRINT);
         AUTO_JUMP_RESET = new AutoJumpResetModule();
 
+        MODULE_MANAGER.register(AUTO_SPRINT);
         MODULE_MANAGER.register(AUTO_STUN);
         MODULE_MANAGER.register(TRIGGER);
         MODULE_MANAGER.register(AUTO_JUMP_RESET);
 
         TRIGGER.onEnable();
+        AUTO_SPRINT.onEnable();
         AUTO_JUMP_RESET.onEnable();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -42,4 +44,3 @@ public class TriggerBotMod implements ClientModInitializer {
         return MODULE_MANAGER;
     }
 }
-
