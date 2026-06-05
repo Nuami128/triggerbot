@@ -5,25 +5,23 @@ import net.minecraft.client.MinecraftClient;
 
 public class AutoSprintModule extends EmptyModule {
 
+    private int attackBufferTicks = 0;
+
     public AutoSprintModule() {
-        super("AutoSprint");
+        super("Auto Sprint");
     }
 
     @Override
-    public String getName() { return "AutoSprint"; }
-
-    @Override
-    public void onEnable() {}
+    public void onEnable() {
+        super.onEnable();
+        attackBufferTicks = 0;
+    }
 
     @Override
     public void onDisable() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc != null && mc.player != null) {
-            mc.player.setSprinting(false);
-        }
+        super.onDisable();
+        attackBufferTicks = 0;
     }
-
-    public void onAttack() {}
 
     @Override
     public void onTick() {
@@ -31,11 +29,27 @@ public class AutoSprintModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (!isEnabled()) return;
 
+        // Wait a few ticks after a hit before re-sprinting
+        // This prevents NoSlow flags from sprinting too fast after attack
+        if (attackBufferTicks > 0) {
+            attackBufferTicks--;
+            return;
+        }
+
+        // Only force sprint when moving forward and not already sprinting
         if (mc.options.forwardKey.isPressed() && !mc.player.isSprinting()) {
             mc.player.setSprinting(true);
         }
     }
 
-    @Override public void onPostMovement() {}
+    @Override
+    public void onAttack() {
+        // Buffer re-sprinting for 3 ticks after a hit
+        attackBufferTicks = 3;
+    }
+
+    @Override public void onClientTick() {}
     @Override public void onJumpReset() {}
+    @Override public void onPostMovement() {}
+    @Override public void onDamage() {}
 }
