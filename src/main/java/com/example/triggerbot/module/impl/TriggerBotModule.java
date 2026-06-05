@@ -97,7 +97,7 @@ public class TriggerBotModule implements ClientModule {
                 mc.interactionManager.attackEntity(mc.player, t);
                 mc.player.swingHand(Hand.MAIN_HAND);
                 cooldownTicks = 1;
-                autoSprint.onAttack();
+                autoSprint.notifyHit();
                 TriggerBotMod.getModuleManager().onAttackAll();
             }
             return; // One action per tick
@@ -176,7 +176,7 @@ public class TriggerBotModule implements ClientModule {
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(Hand.MAIN_HAND);
             cooldownTicks = 1;
-            autoSprint.onAttack();
+            autoSprint.notifyHit();
             TriggerBotMod.getModuleManager().onAttackAll();
         } else {
             // Ground attacks: queue for next tick to let movement settle
