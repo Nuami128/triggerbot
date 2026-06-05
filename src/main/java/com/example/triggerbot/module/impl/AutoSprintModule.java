@@ -21,11 +21,8 @@ public class AutoSprintModule extends EmptyModule {
     public void onDisable() {
         super.onDisable();
         attackBufferTicks = 0;
-        // Don't leave sprint stuck on
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc != null && mc.player != null) {
-            mc.player.setSprinting(false);
-        }
+        if (mc != null) mc.options.sprintKey.setPressed(false);
     }
 
     @Override
@@ -34,28 +31,24 @@ public class AutoSprintModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (!isEnabled()) return;
 
-        // After a hit, wait for Minecraft's natural sprint-break to finish
-        // before we start forcing sprint again. This prevents NoSlow flags.
         if (attackBufferTicks > 0) {
+            // During buffer: release sprint key and let Minecraft's
+            // natural sprint-break happen. Do NOT touch setSprinting.
+            mc.options.sprintKey.setPressed(false);
             attackBufferTicks--;
             return;
         }
 
-        // Only re-sprint when: moving forward, not already sprinting,
-        // not using an item, and not in a screen.
-        if (mc.options.forwardKey.isPressed()
-                && !mc.player.isSprinting()
-                && !mc.player.isUsingItem()
-                && mc.currentScreen == null) {
-            mc.player.setSprinting(true);
-        }
+        // Mirror what the player is doing with forward key.
+        // sprintKey follows forwardKey — Grim sees natural sprint behaviour.
+        boolean movingForward = mc.options.forwardKey.isPressed();
+        mc.options.sprintKey.setPressed(movingForward && !mc.player.isUsingItem());
     }
 
     @Override
     public void onAttack() {
-        // After landing a hit, let Minecraft's sprint-break happen naturally.
-        // 5 ticks gives Grim time to see the natural sprint interruption
-        // before we start re-sprinting. This fixes NoSlow flags.
+        // Release sprint for 5 ticks after a hit so Grim sees
+        // the natural sprint-break before we resume.
         attackBufferTicks = 5;
     }
 
