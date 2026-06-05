@@ -31,7 +31,7 @@ public class AutoSprintModule extends EmptyModule {
 
         if (attackBufferTicks > 0) {
             attackBufferTicks--;
-            return; // Don't touch sprint state at all during buffer
+            return;
         }
 
         // Only set sprint when W is held and not already sprinting
@@ -40,9 +40,10 @@ public class AutoSprintModule extends EmptyModule {
         }
     }
 
-    // Called by TriggerBotModule right after a hit lands
+    // Called by TriggerBotModule when a hit lands
     public void notifyHit() {
-        attackBufferTicks = 6; // Wait 6 ticks after a hit before re-sprinting
+        // 10 ticks = 0.5s buffer — enough for Minecraft's sprint-break to fully resolve
+        attackBufferTicks = 10;
     }
 
     @Override public void onAttack() {}
