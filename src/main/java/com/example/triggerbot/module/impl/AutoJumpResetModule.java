@@ -8,6 +8,7 @@ public class AutoJumpResetModule extends EmptyModule {
     private int cooldown = 0;
     private int pendingJump = -1;
     private int lastHurtTime = 0;
+    private boolean releaseJump = false;
 
     public AutoJumpResetModule() {
         super("Auto Jump Reset");
@@ -19,6 +20,7 @@ public class AutoJumpResetModule extends EmptyModule {
         cooldown = 0;
         pendingJump = -1;
         lastHurtTime = 0;
+        releaseJump = false;
     }
 
     @Override
@@ -27,30 +29,40 @@ public class AutoJumpResetModule extends EmptyModule {
         cooldown = 0;
         pendingJump = -1;
         lastHurtTime = 0;
+        releaseJump = false;
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc != null) mc.options.jumpKey.setPressed(false);
     }
 
     @Override
     public void onTick() {
-        if (cooldown > 0) cooldown--;
-
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
         if (!isEnabled()) return;
 
-        // Detect when WE get hit (hurtTime goes to 10 on damage)
+        // Release the jump key on the tick after we pressed it (tap behaviour)
+        if (releaseJump) {
+            mc.options.jumpKey.setPressed(false);
+            releaseJump = false;
+        }
+
+        if (cooldown > 0) cooldown--;
+
+        // Detect when WE get hit — hurtTime resets to 10 on damage received
         int hurtTime = mc.player.hurtTime;
         if (hurtTime == 10 && lastHurtTime != 10 && cooldown == 0) {
-            // Queue a jump in 1-2 ticks so we're grounded when it fires
-            pendingJump = 1 + (int)(Math.random() * 2);
+            pendingJump = 1 + (int)(Math.random() * 2); // 1-2 tick delay
         }
         lastHurtTime = hurtTime;
 
-        // Process pending jump
+        // Execute pending jump
         if (pendingJump > 0) {
             pendingJump--;
             if (pendingJump == 0) {
                 if (mc.player.isOnGround()) {
-                    mc.player.input.jump();
+                    // Press jump key for exactly one tick (tap)
+                    mc.options.jumpKey.setPressed(true);
+                    releaseJump = true; // released next tick
                     cooldown = 8;
                 }
                 pendingJump = -1;
@@ -58,12 +70,7 @@ public class AutoJumpResetModule extends EmptyModule {
         }
     }
 
-    // IMPORTANT: Do NOT implement onAttack for jump reset.
-    // The PlayerAttackMixin calls onAttackAll() which was causing
-    // the jump to fire on every triggerbot hit — that's what caused
-    // the Simulation flags. Jump reset only fires when YOU get hit.
-    @Override public void onAttack() {}
-
+    @Override public void onAttack() {} // intentionally empty
     @Override public void onClientTick() {}
     @Override public void onJumpReset() {}
     @Override public void onPostMovement() {}
