@@ -2,11 +2,11 @@ package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.PlayerInput;
 
 public class AutoJumpResetModule extends EmptyModule {
 
     private int cooldown = 0;
+    private int pendingJump = -1;
     private int lastHurtTime = 0;
 
     public AutoJumpResetModule() {
@@ -14,43 +14,54 @@ public class AutoJumpResetModule extends EmptyModule {
     }
 
     @Override
+    public void onEnable() {
+        super.onEnable();
+        cooldown = 0;
+        pendingJump = -1;
+        lastHurtTime = 0;
+    }
+
+    @Override
+    public void onDisable() {
+        super.onDisable();
+        cooldown = 0;
+        pendingJump = -1;
+        lastHurtTime = 0;
+    }
+
+    @Override
     public void onTick() {
-        if (cooldown > 0) cooldown--;
+        if (!isEnabled()) return;
 
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
-        if (!isEnabled()) return;
 
-        // 1. CHOOSE LOCAL PLAYER STATE
-        // This targets YOUR local character model flashing red, completely ignoring your crosshair targets.
-        int localHurtTime = mc.player.hurtTime;
+        if (cooldown > 0) cooldown--;
 
-        // 2. DETECT LOCAL DAMAGE FRAME
-        // Fires precisely when YOUR hurtTime drops to 9, indicating you took a hit 50ms ago.
-        if (localHurtTime == 9 && lastHurtTime != 9 && cooldown == 0) {
-            PlayerInput current = mc.player.input.playerInput;
-            
-            // Re-instantiate the packet record so GrimAC matches the simulation perfectly
-            mc.player.input.playerInput = new PlayerInput(
-                current.forward(),
-                current.backward(),
-                current.left(),
-                current.right(),
-                true, // Force Jump Packet Input
-                current.sneak(),
-                current.sprint()
-            );
-
-            cooldown = 10; // 500ms immunity window to prevent multi-hit kickback flags
+        // Detect when we just got hit (hurtTime transitions to 10)
+        int hurtTime = mc.player.hurtTime;
+        if (hurtTime == 10 && lastHurtTime != 10 && cooldown == 0) {
+            // Queue a jump with 1-2 tick random delay
+            pendingJump = 1 + (int)(Math.random() * 2);
         }
-        
-        lastHurtTime = localHurtTime;
+        lastHurtTime = hurtTime;
+
+        // Process the pending jump
+        if (pendingJump > 0) {
+            pendingJump--;
+            if (pendingJump == 0) {
+                if (mc.player.isOnGround()) {
+                    mc.player.input.jump();
+                    cooldown = 10;
+                }
+                pendingJump = -1;
+            }
+        }
     }
 
-    // Clean up empty template layers to avoid event pipeline overlaps
     @Override public void onAttack() {}
     @Override public void onClientTick() {}
     @Override public void onJumpReset() {}
     @Override public void onPostMovement() {}
-    @Override public void onDamage() {} 
+    @Override public void onDamage() {}
 }
