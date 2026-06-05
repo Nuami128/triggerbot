@@ -21,6 +21,11 @@ public class AutoSprintModule extends EmptyModule {
     public void onDisable() {
         super.onDisable();
         attackBufferTicks = 0;
+        // Don't leave sprint stuck on
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc != null && mc.player != null) {
+            mc.player.setSprinting(false);
+        }
     }
 
     @Override
@@ -29,24 +34,31 @@ public class AutoSprintModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (!isEnabled()) return;
 
+        // After a hit, wait for Minecraft's natural sprint-break to finish
+        // before we start forcing sprint again. This prevents NoSlow flags.
         if (attackBufferTicks > 0) {
             attackBufferTicks--;
             return;
         }
 
-        // Only set sprint when W is held and not already sprinting
-        if (mc.options.forwardKey.isPressed() && !mc.player.isSprinting()) {
+        // Only re-sprint when: moving forward, not already sprinting,
+        // not using an item, and not in a screen.
+        if (mc.options.forwardKey.isPressed()
+                && !mc.player.isSprinting()
+                && !mc.player.isUsingItem()
+                && mc.currentScreen == null) {
             mc.player.setSprinting(true);
         }
     }
 
-    // Called by TriggerBotModule when a hit lands
-    public void notifyHit() {
-        // 10 ticks = 0.5s buffer — enough for Minecraft's sprint-break to fully resolve
-        attackBufferTicks = 10;
+    @Override
+    public void onAttack() {
+        // After landing a hit, let Minecraft's sprint-break happen naturally.
+        // 5 ticks gives Grim time to see the natural sprint interruption
+        // before we start re-sprinting. This fixes NoSlow flags.
+        attackBufferTicks = 5;
     }
 
-    @Override public void onAttack() {}
     @Override public void onClientTick() {}
     @Override public void onJumpReset() {}
     @Override public void onPostMovement() {}
