@@ -21,7 +21,6 @@ public class AutoSprintModule extends EmptyModule {
     public void onDisable() {
         super.onDisable();
         attackBufferTicks = 0;
-        // Let the game handle sprint naturally when disabled
     }
 
     @Override
@@ -30,29 +29,23 @@ public class AutoSprintModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (!isEnabled()) return;
 
-        // Wait after a hit before re-sprinting (prevents NoSlow)
         if (attackBufferTicks > 0) {
             attackBufferTicks--;
-            return;
+            return; // Don't touch sprint state at all during buffer
         }
 
-        boolean forwardHeld = mc.options.forwardKey.isPressed();
-        boolean alreadySprinting = mc.player.isSprinting();
-
-        // KEY FIX: Only call setSprinting when state actually needs to change.
-        // Calling it every tick causes a continuous Grim simulation desync.
-        if (forwardHeld && !alreadySprinting) {
+        // Only set sprint when W is held and not already sprinting
+        if (mc.options.forwardKey.isPressed() && !mc.player.isSprinting()) {
             mc.player.setSprinting(true);
         }
-        // Do NOT force setSprinting(false) here — let Minecraft handle it naturally
-        // when the player stops moving or gets hit.
     }
 
-    @Override
-    public void onAttack() {
-        attackBufferTicks = 3;
+    // Called by TriggerBotModule right after a hit lands
+    public void notifyHit() {
+        attackBufferTicks = 6; // Wait 6 ticks after a hit before re-sprinting
     }
 
+    @Override public void onAttack() {}
     @Override public void onClientTick() {}
     @Override public void onJumpReset() {}
     @Override public void onPostMovement() {}
