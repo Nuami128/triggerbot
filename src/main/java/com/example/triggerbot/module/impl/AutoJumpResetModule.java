@@ -28,13 +28,21 @@ public class AutoJumpResetModule extends EmptyModule {
         if (mc != null) mc.options.jumpKey.setPressed(false);
     }
 
+    // onTick fires BEFORE sendMovementPackets — too early for a jump.
+    // Grim sees the jump velocity before the movement packet, flags Simulation.
     @Override
-    public void onTick() {
+    public void onTick() {}
+
+    // onClientTick fires from ClientTickEvents.END_CLIENT_TICK — AFTER the
+    // full game tick and movement packets are done. Grim's next prediction
+    // will correctly account for the jump. This is why it must be here.
+    @Override
+    public void onClientTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
         if (!isEnabled()) return;
 
-        // Release jump key the tick after we pressed it (tap behaviour)
+        // Release jump key the tick after pressing (one-tick tap)
         if (releaseJump) {
             mc.options.jumpKey.setPressed(false);
             releaseJump = false;
@@ -42,8 +50,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
         boolean onGround = mc.player.isOnGround();
 
-        // Jump the moment we touch the ground (bunnyhop)
-        // wasOnGround prevents re-triggering while already standing still
+        // Bunnyhop: fire the moment we land (airborne -> grounded transition)
         if (onGround && !wasOnGround) {
             mc.options.jumpKey.setPressed(true);
             releaseJump = true;
@@ -53,7 +60,6 @@ public class AutoJumpResetModule extends EmptyModule {
     }
 
     @Override public void onAttack() {}
-    @Override public void onClientTick() {}
     @Override public void onJumpReset() {}
     @Override public void onPostMovement() {}
     @Override public void onDamage() {}
