@@ -17,6 +17,13 @@ public class ModuleManager {
         modules.add(module);
     }
 
+    public <T extends ClientModule> T getModule(Class<T> type) {
+        for (ClientModule module : modules) {
+            if (type.isInstance(module)) return type.cast(module);
+        }
+        return null;
+    }
+
     public void tickAll() {
         for (ClientModule module : modules) {
             if (module == null) continue;
