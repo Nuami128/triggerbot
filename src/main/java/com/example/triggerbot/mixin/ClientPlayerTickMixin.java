@@ -10,13 +10,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayerEntity.class)
 public class ClientPlayerTickMixin {
 
-    @Inject(method = "tick", at = @At("TAIL"))
-    private void onTickEnd(CallbackInfo ci) {
+    @Inject(
+        method = "tick",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/network/ClientPlayerEntity;sendMovementPackets()V",
+            shift = At.Shift.BEFORE
+        ),
+        remap = true
+    )
+    private void beforeMovementPackets(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().tickAll();
-    }
-
-    @Inject(method = "sendMovementPackets", at = @At("HEAD"))
-    private void onSendMovementPackets(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 }
