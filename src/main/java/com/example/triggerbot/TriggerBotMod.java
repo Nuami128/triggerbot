@@ -5,7 +5,6 @@ import com.example.triggerbot.module.impl.AutoJumpResetModule;
 import com.example.triggerbot.module.impl.AutoSprintModule;
 import com.example.triggerbot.module.impl.AutoStunModule;
 import com.example.triggerbot.module.impl.TriggerBotModule;
-
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
@@ -35,6 +34,7 @@ public class TriggerBotMod implements ClientModInitializer {
         AUTO_SPRINT.onEnable();
         AUTO_JUMP_RESET.onEnable();
 
+        // clientTickAll only — tickAll and postMovementAll are driven by ClientPlayerTickMixin
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             MODULE_MANAGER.clientTickAll();
         });
