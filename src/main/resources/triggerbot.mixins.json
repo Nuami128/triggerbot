@@ -6,7 +6,8 @@
   "client": [
     "PlayerAttackMixin",
     "KeyBindingAccessor",
-    "ClientPlayerTickMixin"
+    "ClientPlayerTickMixin",
+    "MinecraftClientAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
