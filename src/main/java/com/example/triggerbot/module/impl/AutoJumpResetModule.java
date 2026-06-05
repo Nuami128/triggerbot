@@ -29,37 +29,42 @@ public class AutoJumpResetModule extends EmptyModule {
         lastHurtTime = 0;
     }
 
-    // Run from clientTickAll (END_CLIENT_TICK) — hurtTime is fully updated here
     @Override
-    public void onClientTick() {
-        if (!isEnabled()) return;
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.player == null) return;
-
+    public void onTick() {
         if (cooldown > 0) cooldown--;
 
-        int hurtTime = mc.player.hurtTime;
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+        if (!isEnabled()) return;
 
-        // hurtTime jumps UP to 10 the exact tick a hit registers
-        if (hurtTime == 10 && lastHurtTime < 10 && cooldown == 0) {
-            pendingJump = 1; // fire next client tick
+        // Detect when WE get hit (hurtTime goes to 10 on damage)
+        int hurtTime = mc.player.hurtTime;
+        if (hurtTime == 10 && lastHurtTime != 10 && cooldown == 0) {
+            // Queue a jump in 1-2 ticks so we're grounded when it fires
+            pendingJump = 1 + (int)(Math.random() * 2);
         }
         lastHurtTime = hurtTime;
 
+        // Process pending jump
         if (pendingJump > 0) {
             pendingJump--;
             if (pendingJump == 0) {
                 if (mc.player.isOnGround()) {
                     mc.player.input.jump();
-                    cooldown = 10;
+                    cooldown = 8;
                 }
                 pendingJump = -1;
             }
         }
     }
 
-    @Override public void onTick() {}
+    // IMPORTANT: Do NOT implement onAttack for jump reset.
+    // The PlayerAttackMixin calls onAttackAll() which was causing
+    // the jump to fire on every triggerbot hit — that's what caused
+    // the Simulation flags. Jump reset only fires when YOU get hit.
     @Override public void onAttack() {}
+
+    @Override public void onClientTick() {}
     @Override public void onJumpReset() {}
     @Override public void onPostMovement() {}
     @Override public void onDamage() {}
