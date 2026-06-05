@@ -29,10 +29,6 @@ public class TriggerBotModule implements ClientModule {
     private double lastVelY = 0;
     private int sprintTicks = 0;
 
-    // State trackers for GrimAC packet pairing
-    private boolean pendingAttack = false;
-    private Entity queuedTarget = null;
-
     public TriggerBotModule(AutoStunModule autoStun, AutoSprintModule autoSprint) {
         this.autoStun = autoStun;
         this.autoSprint = autoSprint;
@@ -43,8 +39,11 @@ public class TriggerBotModule implements ClientModule {
     @Override public void onAttack() {}
     @Override public void onDamage() {}
 
-    @Override public String getName() { return "TriggerBot"; }
-    @Override public boolean isEnabled() { return enabled; }
+    @Override
+    public String getName() { return "TriggerBot"; }
+
+    @Override
+    public boolean isEnabled() { return enabled; }
 
     @Override
     public void onEnable() {
@@ -56,7 +55,6 @@ public class TriggerBotModule implements ClientModule {
         cooldownTicks = 0;
         releaseDelay = 0;
         sprintTicks = 0;
-        clearAttackQueue();
     }
 
     @Override
@@ -69,16 +67,13 @@ public class TriggerBotModule implements ClientModule {
         lastVelY = 0;
         itemReleaseCooldown = 0;
         sprintTicks = 0;
-        clearAttackQueue();
     }
 
-    // 1. Move the execution loop out of onPostMovement entirely
     @Override
-    public void onPostMovement() {}
+    public void onTick() {}
 
-    // 2. Process criteria in onTick BEFORE sendMovementPackets is called
     @Override
-    public void onTick() {
+    public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (!enabled) return;
@@ -148,7 +143,6 @@ public class TriggerBotModule implements ClientModule {
 
         Entity target = findTarget(mc);
         if (target == null) return;
-        if (mc.targetedEntity != target) return; // Matches your vanilla crosshair logic
 
         if (target instanceof PlayerEntity pe
                 && pe.isBlocking()
@@ -159,41 +153,14 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        // Queue the attack state instead of executing raw packets here
         if (target.isAlive() && !target.isRemoved() && CombatUtil.isInReach(mc, target)) {
-            this.queuedTarget = target;
-            this.pendingAttack = true;
+            mc.interactionManager.attackEntity(mc.player, target);
+            mc.player.swingHand(Hand.MAIN_HAND);
+            mc.player.setSprinting(false);
+            cooldownTicks = 1;
+            autoSprint.onAttack();
+            TriggerBotMod.getModuleManager().onAttackAll();
         }
-    }
-
-    /**
-     * Fired sequentially by your Network Mixin inside the same Netty flush transaction
-     */
-    public void executePendingAttack() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (!enabled || !pendingAttack || queuedTarget == null || mc.player == null || mc.interactionManager == null) {
-            clearAttackQueue();
-            return;
-        }
-
-        // Send the attack perfectly in sync with the network lifecycle
-        mc.interactionManager.attackEntity(mc.player, queuedTarget);
-        mc.player.swingHand(Hand.MAIN_HAND);
-        
-        cooldownTicks = 1;
-        autoSprint.onAttack();
-        TriggerBotMod.getModuleManager().onAttackAll();
-        
-        clearAttackQueue();
-    }
-
-    public boolean isAttackPending() {
-        return enabled && pendingAttack && queuedTarget != null;
-    }
-
-    private void clearAttackQueue() {
-        this.pendingAttack = false;
-        this.queuedTarget = null;
     }
 
     private Entity findTarget(MinecraftClient mc) {
@@ -217,4 +184,3 @@ public class TriggerBotModule implements ClientModule {
         return null;
     }
 }
-
