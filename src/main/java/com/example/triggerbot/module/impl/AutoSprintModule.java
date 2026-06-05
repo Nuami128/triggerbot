@@ -21,6 +21,7 @@ public class AutoSprintModule extends EmptyModule {
     public void onDisable() {
         super.onDisable();
         attackBufferTicks = 0;
+        // Let the game handle sprint naturally when disabled
     }
 
     @Override
@@ -29,22 +30,26 @@ public class AutoSprintModule extends EmptyModule {
         if (mc == null || mc.player == null) return;
         if (!isEnabled()) return;
 
-        // Wait a few ticks after a hit before re-sprinting
-        // This prevents NoSlow flags from sprinting too fast after attack
+        // Wait after a hit before re-sprinting (prevents NoSlow)
         if (attackBufferTicks > 0) {
             attackBufferTicks--;
             return;
         }
 
-        // Only force sprint when moving forward and not already sprinting
-        if (mc.options.forwardKey.isPressed() && !mc.player.isSprinting()) {
+        boolean forwardHeld = mc.options.forwardKey.isPressed();
+        boolean alreadySprinting = mc.player.isSprinting();
+
+        // KEY FIX: Only call setSprinting when state actually needs to change.
+        // Calling it every tick causes a continuous Grim simulation desync.
+        if (forwardHeld && !alreadySprinting) {
             mc.player.setSprinting(true);
         }
+        // Do NOT force setSprinting(false) here — let Minecraft handle it naturally
+        // when the player stops moving or gets hit.
     }
 
     @Override
     public void onAttack() {
-        // Buffer re-sprinting for 3 ticks after a hit
         attackBufferTicks = 3;
     }
 
