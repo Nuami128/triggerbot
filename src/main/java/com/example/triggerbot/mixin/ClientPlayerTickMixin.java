@@ -24,15 +24,15 @@ public class ClientPlayerTickMixin {
     }
 
     @Inject(
-        method = "tick",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/network/ClientPlayerEntity;sendMovementPackets()V",
-            shift = At.Shift.AFTER
-        ),
-        remap = true
-    )
-    private void afterMovementPackets(CallbackInfo ci) {
-        TriggerBotMod.getModuleManager().postMovementAll();
-    }
+    method = "tick",
+    at = @At(
+        value = "INVOKE",
+        target = "Lnet/minecraft/client/network/ClientPlayerEntity;sendMovementPackets()V",
+        shift = At.Shift.BEFORE
+    ),
+    remap = true
+)
+private void beforeMovementPackets(CallbackInfo ci) {
+    TriggerBotMod.getModuleManager().tickAll();
+    TriggerBotMod.getModuleManager().postMovementAll();
 }
