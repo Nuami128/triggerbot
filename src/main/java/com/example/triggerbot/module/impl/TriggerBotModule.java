@@ -20,7 +20,6 @@ public class TriggerBotModule implements ClientModule {
     private int releaseDelay = 0;
     private int itemReleaseCooldown = 0;
     private boolean wasAirborne = false;
-    private boolean wasSprintingLastTick = false;
     private double lastVelY = 0;
 
     public TriggerBotModule(AutoStunModule autoStun, AutoSprintModule autoSprint) {
@@ -39,7 +38,6 @@ public class TriggerBotModule implements ClientModule {
     public void onEnable() {
         enabled = true;
         wasAirborne = false;
-        wasSprintingLastTick = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
         lastProcessedTick = -1L;
@@ -52,7 +50,6 @@ public class TriggerBotModule implements ClientModule {
         releaseDelay = 0;
         lastProcessedTick = -1L;
         wasAirborne = false;
-        wasSprintingLastTick = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
     }
@@ -95,29 +92,25 @@ public class TriggerBotModule implements ClientModule {
         boolean onGround = mc.player.isOnGround();
         boolean ascending = velY > 0;
         boolean airborne = !onGround;
-        boolean sprinting = mc.player.isSprinting();
         boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
         boolean falling = (velY <= -0.1) || (wasAirborne && lastVelY <= -0.1);
 
-        // Skip only the exact landing tick when we actually fell (lastVelY <= -0.1).
-        // Step-ups have lastVelY near 0 so they won't be skipped — no missed hits.
+        // Skip exact landing tick from a real fall to avoid Simulation flags
         if (wasAirborne && onGround && lastVelY <= -0.1) {
             wasAirborne = airborne;
-            wasSprintingLastTick = sprinting;
             lastVelY = velY;
             return;
         }
 
-        // Ground sprint hit: fire on the tick sprint is released.
-        boolean groundSprintHit = onGround && hasMovement && wasSprintingLastTick && !sprinting;
-
         wasAirborne = airborne;
-        wasSprintingLastTick = sprinting;
         lastVelY = velY;
 
         if (ascending) return;
         if (airborne && !falling) return;
-        if (onGround && !groundSprintHit) return;
+        // Ground: allow attack whenever moving — groundSprintHit was removed
+        // because AutoSprint's 5-tick buffer means wasSprintingLastTick is
+        // always false by the time sprint resumes, so the condition never fired.
+        if (onGround && !hasMovement) return;
 
         long currentTick = mc.world.getTime();
         if (currentTick == lastProcessedTick) return;
