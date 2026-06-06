@@ -7,7 +7,6 @@
     "PlayerAttackMixin",
     "KeyBindingAccessor",
     "ClientPlayerTickMixin",
-    "MinecraftClientAccessor",
     "PlayerDamageMixin"
   ],
   "injectors": {
