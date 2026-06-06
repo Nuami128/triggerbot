@@ -8,7 +8,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.Hand;
 
 public class TriggerBotModule implements ClientModule {
 
@@ -131,8 +130,6 @@ public class TriggerBotModule implements ClientModule {
         // 2. swingHand     → sends ANIMATION packet
         // This matches vanilla packet order exactly and fixes Post/PacketOrderO flags.
         mc.interactionManager.attackEntity(mc.player, target);
-        mc.player.swingHand(Hand.MAIN_HAND);
-
         autoSprint.onAttack();
         TriggerBotMod.getModuleManager().onAttackAll();
     }
