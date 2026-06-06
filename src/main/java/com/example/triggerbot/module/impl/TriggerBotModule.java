@@ -1,7 +1,6 @@
 package com.example.triggerbot.module.impl;
 
 import com.example.triggerbot.TriggerBotMod;
-import com.example.triggerbot.mixin.MinecraftClientAccessor;
 import com.example.triggerbot.module.ClientModule;
 import com.example.triggerbot.util.CombatUtil;
 import net.minecraft.client.MinecraftClient;
@@ -9,6 +8,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.Hand;
 
 public class TriggerBotModule implements ClientModule {
 
@@ -107,9 +107,6 @@ public class TriggerBotModule implements ClientModule {
 
         if (ascending) return;
         if (airborne && !falling) return;
-        // Ground: allow attack whenever moving — groundSprintHit was removed
-        // because AutoSprint's 5-tick buffer means wasSprintingLastTick is
-        // always false by the time sprint resumes, so the condition never fired.
         if (onGround && !hasMovement) return;
 
         long currentTick = mc.world.getTime();
@@ -129,7 +126,13 @@ public class TriggerBotModule implements ClientModule {
             return;
         }
 
-        ((MinecraftClientAccessor) mc).invokeDoAttack();
+        // Replace invokeDoAttack() with direct calls in the order Grim expects:
+        // 1. attackEntity  → sends INTERACT_ENTITY packet
+        // 2. swingHand     → sends ANIMATION packet
+        // This matches vanilla packet order exactly and fixes Post/PacketOrderO flags.
+        mc.interactionManager.attackEntity(mc.player, target);
+        mc.player.swingHand(Hand.MAIN_HAND);
+
         autoSprint.onAttack();
         TriggerBotMod.getModuleManager().onAttackAll();
     }
