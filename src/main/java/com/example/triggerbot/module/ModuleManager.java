@@ -47,7 +47,6 @@ public class ModuleManager {
 
     public void onDamageAll() {
         for (ClientModule module : modules) {
-            if (module == null) continue;
             module.onDamage();
         }
     }
