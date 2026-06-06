@@ -17,7 +17,6 @@ public class TriggerBotModule implements ClientModule {
 
     private boolean enabled = false;
     private long lastProcessedTick = -1L;
-    private int cooldownTicks = 0;
     private int releaseDelay = 0;
     private int itemReleaseCooldown = 0;
     private boolean wasAirborne = false;
@@ -44,14 +43,12 @@ public class TriggerBotModule implements ClientModule {
         lastVelY = 0;
         itemReleaseCooldown = 0;
         lastProcessedTick = -1L;
-        cooldownTicks = 0;
         releaseDelay = 0;
     }
 
     @Override
     public void onDisable() {
         enabled = false;
-        cooldownTicks = 0;
         releaseDelay = 0;
         lastProcessedTick = -1L;
         wasAirborne = false;
@@ -103,9 +100,7 @@ public class TriggerBotModule implements ClientModule {
         boolean falling = (velY <= -0.1) || (wasAirborne && lastVelY <= -0.1);
 
         // Skip only the exact landing tick when we actually fell (lastVelY <= -0.1).
-        // A step-up has lastVelY near 0 so it won't be skipped — no missed hits.
-        // Grim's Simulation check snapshots velY on the landing tick; firing an
-        // attack here desynchronises its physics prediction. One tick is enough.
+        // Step-ups have lastVelY near 0 so they won't be skipped — no missed hits.
         if (wasAirborne && onGround && lastVelY <= -0.1) {
             wasAirborne = airborne;
             wasSprintingLastTick = sprinting;
@@ -114,12 +109,8 @@ public class TriggerBotModule implements ClientModule {
         }
 
         // Ground sprint hit: fire on the tick sprint is released.
-        // wasSprintingLastTick=true + sprinting=false means AutoSprint just
-        // dropped the sprint key this tick. Grim sees: sprinting → sprint-break
-        // → attack, which is physically identical to a real player's sprint hit.
         boolean groundSprintHit = onGround && hasMovement && wasSprintingLastTick && !sprinting;
 
-        // Update state AFTER reading it for this tick's decision
         wasAirborne = airborne;
         wasSprintingLastTick = sprinting;
         lastVelY = velY;
@@ -132,10 +123,6 @@ public class TriggerBotModule implements ClientModule {
         if (currentTick == lastProcessedTick) return;
         lastProcessedTick = currentTick;
 
-        if (cooldownTicks > 0) {
-            cooldownTicks--;
-            return;
-        }
         if (mc.player.getAttackCooldownProgress(1.0f) < 0.85f) return;
 
         Entity target = mc.targetedEntity;
@@ -146,12 +133,10 @@ public class TriggerBotModule implements ClientModule {
         if (target instanceof PlayerEntity pe && pe.isBlocking()
                 && CombatUtil.isFacingUs(mc, target) && !autoStun.isEnabled()) {
             autoStun.onEnable();
-            cooldownTicks = 1;
             return;
         }
 
         ((MinecraftClientAccessor) mc).invokeDoAttack();
-        cooldownTicks = 1;
         autoSprint.onAttack();
         TriggerBotMod.getModuleManager().onAttackAll();
     }
