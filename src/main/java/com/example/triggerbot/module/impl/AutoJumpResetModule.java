@@ -51,6 +51,7 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurtTime = mc.player.hurtTime;
 
+        System.out.println("hurtTime=" + hurtTime + " lastHurtTime=" + lastHurtTime);
         if (hurtTime == 9 && lastHurtTime == 10) {
             mc.options.jumpKey.setPressed(true);
             releaseJump = true;
