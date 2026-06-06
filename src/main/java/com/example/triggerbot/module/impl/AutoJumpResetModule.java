@@ -34,10 +34,6 @@ public class AutoJumpResetModule extends EmptyModule {
     @Override public void onJumpReset() {}
     @Override public void onDamage() {}
 
-    // onPostMovement fires at TAIL — after the full tick and sendMovementPackets.
-    // hurtTime is updated by the server packet handler during the tick, so by
-    // TAIL it has already been decremented. Reading it here guarantees we catch
-    // the 10→9 transition reliably every time we take a hit.
     @Override
     public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
@@ -51,8 +47,11 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurtTime = mc.player.hurtTime;
 
-        System.out.println("hurtTime=" + hurtTime + " lastHurtTime=" + lastHurtTime);
-        if (hurtTime == 9 && lastHurtTime == 10) {
+        // Use a broad transition check instead of strict 10→9.
+        // On Android/high-ping connections, server packets arrive
+        // asynchronously so hurtTime can skip values between ticks.
+        // Catching any drop from >=10 to <10 ensures we never miss a hit.
+        if (lastHurtTime >= 10 && hurtTime < 10 && hurtTime > 0) {
             mc.options.jumpKey.setPressed(true);
             releaseJump = true;
         }
