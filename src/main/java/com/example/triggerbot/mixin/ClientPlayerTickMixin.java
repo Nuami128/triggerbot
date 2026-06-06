@@ -10,9 +10,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayerEntity.class)
 public class ClientPlayerTickMixin {
 
-    // Fires BEFORE sendMovementPackets — safe for movement/sprint/jump state changes.
-    // tickAll and clientTickAll go here because they set key state that needs to be
-    // included in the outgoing packet, not read back after it's already sent.
+    // tickAll and clientTickAll fire BEFORE sendMovementPackets so that
+    // jump/sprint key state is included in the outgoing position packet.
     @Inject(
         method = "tick",
         at = @At(
@@ -27,19 +26,17 @@ public class ClientPlayerTickMixin {
         TriggerBotMod.getModuleManager().clientTickAll();
     }
 
-    // Fires AFTER sendMovementPackets — the position packet is now committed to the
-    // server. Grim's simulation sees: move → packet → attack, in the correct order.
-    // Firing attacks before this point is what caused the Simulation flag cascade.
+    // postMovementAll fires at TAIL (end of tick) — after sendMovementPackets
+    // AND after the superclass tick has fully completed. This means the position
+    // packet is already sent, and the INTERACT_ENTITY + ANIMATION packets from
+    // invokeDoAttack() arrive at the server in the correct post-movement order
+    // that Grim's Post and PacketOrderO checks expect on 1.21.11.
     @Inject(
         method = "tick",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/network/ClientPlayerEntity;sendMovementPackets()V",
-            shift = At.Shift.AFTER
-        ),
+        at = @At("TAIL"),
         remap = true
     )
-    private void afterMovementPackets(CallbackInfo ci) {
+    private void onTickTail(CallbackInfo ci) {
         TriggerBotMod.getModuleManager().postMovementAll();
     }
 }
