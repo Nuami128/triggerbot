@@ -23,10 +23,6 @@ public class TriggerBotModule implements ClientModule {
     private boolean wasAirborne = false;
     private boolean wasSprintingLastTick = false;
     private double lastVelY = 0;
-    // Skip the exact landing tick — Grim's Simulation check tracks velY on
-    // landing and an attack fired on that same tick desynchronises its
-    // physics prediction, producing the cascading Simulation flags you saw.
-    private boolean justLanded = false;
 
     public TriggerBotModule(AutoStunModule autoStun, AutoSprintModule autoSprint) {
         this.autoStun = autoStun;
@@ -50,7 +46,6 @@ public class TriggerBotModule implements ClientModule {
         lastProcessedTick = -1L;
         cooldownTicks = 0;
         releaseDelay = 0;
-        justLanded = false;
     }
 
     @Override
@@ -63,7 +58,6 @@ public class TriggerBotModule implements ClientModule {
         wasSprintingLastTick = false;
         lastVelY = 0;
         itemReleaseCooldown = 0;
-        justLanded = false;
     }
 
     @Override
@@ -108,19 +102,11 @@ public class TriggerBotModule implements ClientModule {
         boolean hasMovement = (velX * velX + velZ * velZ) > 0.001;
         boolean falling = (velY <= -0.1) || (wasAirborne && lastVelY <= -0.1);
 
-        // Skip the landing tick — velY is in a transitional state that Grim
-        // hasn't confirmed yet. Attacking here is what caused the Simulation
-        // flag cascade. We also skip the tick immediately after landing
-        // (justLanded) to let Grim's sim catch up to the new ground state.
-        if (onGround && wasAirborne) {
-            justLanded = true;
-            wasAirborne = airborne;
-            wasSprintingLastTick = sprinting;
-            lastVelY = velY;
-            return;
-        }
-        if (justLanded) {
-            justLanded = false;
+        // Skip only the exact landing tick when we actually fell (lastVelY <= -0.1).
+        // A step-up has lastVelY near 0 so it won't be skipped — no missed hits.
+        // Grim's Simulation check snapshots velY on the landing tick; firing an
+        // attack here desynchronises its physics prediction. One tick is enough.
+        if (wasAirborne && onGround && lastVelY <= -0.1) {
             wasAirborne = airborne;
             wasSprintingLastTick = sprinting;
             lastVelY = velY;
