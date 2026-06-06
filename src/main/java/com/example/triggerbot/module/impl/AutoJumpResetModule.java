@@ -28,16 +28,22 @@ public class AutoJumpResetModule extends EmptyModule {
         if (mc != null && mc.options != null) mc.options.jumpKey.setPressed(false);
     }
 
-    @Override
-    public void onTick() {}
+    @Override public void onTick() {}
+    @Override public void onClientTick() {}
+    @Override public void onAttack() {}
+    @Override public void onJumpReset() {}
+    @Override public void onDamage() {}
 
+    // onPostMovement fires at TAIL — after the full tick and sendMovementPackets.
+    // hurtTime is updated by the server packet handler during the tick, so by
+    // TAIL it has already been decremented. Reading it here guarantees we catch
+    // the 10→9 transition reliably every time we take a hit.
     @Override
-    public void onClientTick() {
+    public void onPostMovement() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.player == null) return;
         if (!isEnabled()) return;
 
-        // Release the jump key on the tick after we pressed it
         if (releaseJump) {
             mc.options.jumpKey.setPressed(false);
             releaseJump = false;
@@ -45,10 +51,6 @@ public class AutoJumpResetModule extends EmptyModule {
 
         int hurtTime = mc.player.hurtTime;
 
-        // hurtTime starts at 10 when hit and counts down each tick.
-        // We detect the transition from any higher value down to 9,
-        // which is exactly 1 tick after the server confirms the hit.
-        // This is reliable, purely client-side, needs no mixin.
         if (hurtTime == 9 && lastHurtTime == 10) {
             mc.options.jumpKey.setPressed(true);
             releaseJump = true;
@@ -56,9 +58,4 @@ public class AutoJumpResetModule extends EmptyModule {
 
         lastHurtTime = hurtTime;
     }
-
-    @Override public void onAttack() {}
-    @Override public void onJumpReset() {}
-    @Override public void onPostMovement() {}
-    @Override public void onDamage() {}
 }
