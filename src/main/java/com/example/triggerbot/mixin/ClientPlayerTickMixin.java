@@ -10,7 +10,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayerEntity.class)
 public class ClientPlayerTickMixin {
 
-    // Fires tick logic (movement keys, sprint, etc.) BEFORE the packet
+    // Fires BEFORE sendMovementPackets — safe for movement/sprint/jump state changes.
+    // tickAll and clientTickAll go here because they set key state that needs to be
+    // included in the outgoing packet, not read back after it's already sent.
     @Inject(
         method = "tick",
         at = @At(
@@ -25,8 +27,9 @@ public class ClientPlayerTickMixin {
         TriggerBotMod.getModuleManager().clientTickAll();
     }
 
-    // Fires attack logic AFTER the packet — position is now committed to server,
-    // so Grim's simulation sees: move → packet → attack, in the correct order.
+    // Fires AFTER sendMovementPackets — the position packet is now committed to the
+    // server. Grim's simulation sees: move → packet → attack, in the correct order.
+    // Firing attacks before this point is what caused the Simulation flag cascade.
     @Inject(
         method = "tick",
         at = @At(
