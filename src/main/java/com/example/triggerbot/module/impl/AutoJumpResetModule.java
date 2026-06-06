@@ -1,5 +1,6 @@
 package com.example.triggerbot.module.impl;
 
+import net.minecraft.entity.LivingEntity;
 import com.example.triggerbot.module.EmptyModule;
 import net.minecraft.client.MinecraftClient;
 
@@ -53,11 +54,12 @@ public class AutoJumpResetModule extends EmptyModule {
         // 4. Target's hurtTime == 9 — fires the jump reset on the exact tick
         //    the server confirms the hit landed, so it syncs with knockback
         //    and won't look like an unprompted jump to Grim
-        boolean hasTarget = mc.targetedEntity != null && mc.targetedEntity.isAlive();
-        boolean hasMovement = mc.player.isSprinting()
-                || (mc.player.getVelocity().horizontalLengthSquared() > 0.001);
-        boolean hurtTimeSynced = mc.targetedEntity != null
-                && mc.targetedEntity.hurtTime == 9;
+        boolean hasTarget = mc.targetedEntity instanceof LivingEntity living
+        && living.isAlive();
+boolean hasMovement = mc.player.isSprinting()
+        || (mc.player.getVelocity().horizontalLengthSquared() > 0.001);
+boolean hurtTimeSynced = mc.targetedEntity instanceof LivingEntity le
+        && le.hurtTime == 9;
 
         if (onGround && !wasOnGround && hasTarget && hasMovement && hurtTimeSynced) {
             mc.options.jumpKey.setPressed(true);
